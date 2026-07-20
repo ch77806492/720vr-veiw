@@ -1,0 +1,10 @@
+node_modules/
+dist/
+qa-screenshots/
+.env
+.env.*
+.codex-run/
+*.log
+备份/
+tools/krpano-1.24/
+tools/krpano-1.24.zip

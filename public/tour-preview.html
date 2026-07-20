@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<base href="/tour-output/" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>学校360全景浏览</title>
+<link rel="stylesheet" href="./assets/tour.css" />
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.171.0/build/three.module.js"}}</script>
+</head>
+<body>
+<canvas class="planet-intro-canvas" id="planetIntroCanvas" aria-hidden="true"></canvas>
+<main class="tour-stage" id="stage"></main>
+<div class="transition-snapshot" id="transitionSnapshot"></div>
+<div class="markers" id="markers"></div>
+<aside class="tour-title"><h1 id="title"></h1><p id="desc"></p></aside>
+<aside class="quick-entry" id="quickEntry"></aside>
+<button class="quick-toggle" id="quickToggle" type="button">快捷场景</button>
+<button class="map-toggle" id="mapToggle" type="button">平面图</button>
+<button class="gyro-control" id="gyroControl" type="button">开启陀螺仪</button>
+<aside class="floating-map"><h2 id="mapTitle"></h2><div class="map-card" id="mapCard"></div></aside>
+<section class="bottom-dock">
+  <div class="scene-info"><h1 id="title"></h1><p id="desc"></p></div>
+  <div class="scene-rail" id="sceneRail"></div>
+</section>
+<div class="scene-picker" id="scenePicker"></div>
+<div class="motion-overlay" id="motionOverlay"><div class="motion-guide"><div class="motion-chip"><div class="motion-label" id="motionLabel">正在进入校园中</div><div class="motion-progress"><span id="motionProgress"></span></div></div><div class="motion-arrows"><span></span><span></span><span></span></div></div></div>
+<div class="video-modal" id="videoModal"><button id="closeVideo">关闭</button><div id="videoMount"></div></div>
+<div class="quick-modal" id="quickModal"><div class="quick-panel"><button class="quick-close" id="quickClose">关闭</button><h2 id="quickTitle"></h2><main class="quick-stage" id="quickStage"></main></div></div>
+<audio id="bgMusic" src="./assets/audio/background.mp3" preload="auto" loop autoplay playsinline></audio>
+<button class="music-control" id="musicControl" type="button">播放音乐</button>
+<script type="module" src="./assets/tour.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1200" viewBox="0 0 2400 1200">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6f9db5"/>
+      <stop offset="0.58" stop-color="#c7dcbf"/>
+      <stop offset="1" stop-color="#d6dfc8"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#688b67"/>
+      <stop offset="1" stop-color="#35483b"/>
+    </linearGradient>
+  </defs>
+  <rect width="2400" height="740" fill="url(#sky)"/>
+  <rect y="740" width="2400" height="460" fill="url(#ground)"/>
+  <path d="M0 820 C280 760 460 780 720 830 C1000 884 1320 880 1680 810 C1940 760 2180 774 2400 820 L2400 1200 L0 1200 Z" fill="#5d745b"/>
+  <path d="M800 1200 C935 1020 1035 905 1184 756 C1308 894 1440 1028 1600 1200 Z" fill="#d6d1c3"/>
+  <path d="M1018 1200 C1080 1010 1128 892 1184 756 C1243 892 1308 1010 1384 1200 Z" fill="#e9e4d8" opacity="0.72"/>
+  <g opacity="0.42">
+    <circle cx="185" cy="263" r="62" fill="#f2d77c"/>
+    <circle cx="570" cy="380" r="84" fill="#ffffff" opacity="0.18"/>
+    <circle cx="1780" cy="292" r="118" fill="#ffffff" opacity="0.12"/>
+  </g>
+  <g fill="#33473b">
+    <path d="M150 730 L192 555 L232 730 Z"/>
+    <path d="M232 740 L282 510 L332 740 Z"/>
+    <path d="M2010 750 L2065 515 L2120 750 Z"/>
+    <path d="M2135 746 L2184 572 L2234 746 Z"/>
+  </g>
+  <g transform="translate(760 498)">
+    <rect x="0" y="182" width="850" height="138" rx="8" fill="#c8b58c"/>
+    <rect x="36" y="132" width="778" height="70" rx="4" fill="#dfd2ac"/>
+    <path d="M0 132 L426 0 L850 132 Z" fill="#b94a3f"/>
+    <rect x="95" y="210" width="106" height="110" fill="#6f4035"/>
+    <rect x="282" y="210" width="106" height="110" fill="#6f4035"/>
+    <rect x="466" y="210" width="106" height="110" fill="#6f4035"/>
+    <rect x="650" y="210" width="106" height="110" fill="#6f4035"/>
+    <rect x="294" y="74" width="260" height="58" rx="4" fill="#f5e8bd"/>
+    <text x="424" y="112" text-anchor="middle" font-family="Microsoft YaHei, Arial" font-size="32" font-weight="700" fill="#67352e">未来实验学校</text>
+  </g>
+  <g fill="#405e4d" opacity="0.86">
+    <rect x="215" y="676" width="230" height="110" rx="5"/>
+    <rect x="1785" y="670" width="272" height="118" rx="5"/>
+  </g>
+</svg>
