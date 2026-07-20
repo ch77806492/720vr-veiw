@@ -274,13 +274,9 @@ function tourSourceWriterPlugin() {
 
         try {
           const requestUrl = new URL(req.url || '/', 'http://localhost');
-          const kind = requestUrl.searchParams.get('kind') === 'maps'
-            ? 'maps'
-            : requestUrl.searchParams.get('kind') === 'thumbs'
-              ? 'thumbs'
-              : requestUrl.searchParams.get('kind') === 'animations'
-                ? 'animations'
-              : 'panoramas';
+          const requestedKind = requestUrl.searchParams.get('kind');
+          const allowedKinds = new Set(['maps', 'thumbs', 'animations', 'roaming-audio', 'roaming-guides']);
+          const kind = allowedKinds.has(requestedKind) ? requestedKind : 'panoramas';
           const stable = requestUrl.searchParams.get('stable') === '1';
           const originalName = safeFilePart(requestUrl.searchParams.get('name'), `${kind}-asset`);
           const ext = path.extname(originalName) || '.bin';

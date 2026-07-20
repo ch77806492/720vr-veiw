@@ -10,12 +10,15 @@ import {
   MapPinned,
   Move,
   Plus,
+  Route,
   Save,
   Trash2,
   Upload,
   Video,
 } from 'lucide-react';
 import PanoramaViewer from './PanoramaViewer.jsx';
+import RoamingEditor from './RoamingEditor.jsx';
+import { createDefaultRoamingConfig, normalizeRoamingConfig } from './roamingConfig.js';
 
 const demoPanorama = '/demo-campus-panorama.svg';
 const previewPath = '/tour-preview.html';
@@ -675,6 +678,8 @@ function App() {
   const [activeAnimatedSpotId, setActiveAnimatedSpotId] = useState(initialScenes[0].animatedSpots?.[0]?.id);
   const [floorMaps, setFloorMaps] = useState({});
   const [quickLinks, setQuickLinks] = useState([]);
+  const [roamingConfig, setRoamingConfig] = useState(() => createDefaultRoamingConfig());
+  const [editorMode, setEditorMode] = useState('panorama');
   const [sidebarWidth, setSidebarWidth] = useState(390);
   const [inspectorWidth, setInspectorWidth] = useState(390);
   const [sceneTreeHeight, setSceneTreeHeight] = useState(sceneTreeMinHeight);
@@ -1307,6 +1312,7 @@ function App() {
           targetSceneId: link.targetSceneId,
           action: link.action === 'navigate' ? 'navigate' : 'modal',
         })),
+      roaming: normalizeRoamingConfig(roamingConfig, pathOnlyScenes),
     };
   };
 
@@ -1326,6 +1332,7 @@ function App() {
         action: link.action === 'navigate' ? 'navigate' : 'modal',
       })),
     );
+    setRoamingConfig(normalizeRoamingConfig(project.roaming, restoredScenes));
     setActiveSceneId(restoredActiveScene.id);
     setActiveHotspotId(restoredActiveScene.hotspots?.[0]?.id);
     setActiveVideoId(restoredActiveScene.videoSpots?.[0]?.id);
@@ -1380,7 +1387,7 @@ function App() {
         .catch(console.error);
     }, 450);
     return () => window.clearTimeout(saveTimerRef.current);
-  }, [groups, scenes, activeSceneId, floorMaps, quickLinks, isProjectLoaded]);
+  }, [groups, scenes, activeSceneId, floorMaps, quickLinks, roamingConfig, isProjectLoaded]);
 
   useEffect(() => {
     if (!isProjectLoaded || !groups.length) return;
@@ -1477,6 +1484,61 @@ function App() {
       setIsPublishing(false);
     }
   };
+
+  const openRoamingEditor = () => {
+    setRoamingConfig((current) => ({ ...normalizeRoamingConfig(current, scenes), enabled: true }));
+    setEditorMode('roaming');
+    setPublishState('已启用漫游，请完成路线设置');
+  };
+
+  const uploadRoamingMusic = async (file) => {
+    setIsPublishing(true);
+    try {
+      const uploaded = await uploadAssetFile(file, 'roaming-audio', file.name, { stable: true });
+      setRoamingConfig((current) => ({
+        ...current,
+        enabled: true,
+        music: { name: file.name, url: uploaded.url, assetFileName: uploaded.filename || file.name },
+      }));
+      setPublishState('漫游背景音乐已添加');
+    } catch (error) {
+      console.error(error);
+      setPublishState(error instanceof Error ? error.message : '漫游音乐上传失败');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const saveRoamingConfiguration = async () => {
+    setIsPublishing(true);
+    try {
+      const project = await serializeProject();
+      await writeLocalProject(project);
+      setPublishState('漫游配置已保存');
+    } catch (error) {
+      console.error(error);
+      setPublishState(error instanceof Error ? error.message : '漫游配置保存失败');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  if (editorMode === 'roaming') {
+    return (
+      <RoamingEditor
+        config={roamingConfig}
+        scenes={scenes}
+        onChange={(next) => {
+          setRoamingConfig(normalizeRoamingConfig(next, scenes));
+          setPublishState('漫游有未保存更改');
+        }}
+        onBack={() => setEditorMode('panorama')}
+        onSave={saveRoamingConfiguration}
+        onUploadMusic={uploadRoamingMusic}
+        isSaving={isPublishing}
+      />
+    );
+  }
 
   return (
     <main className="app-shell">
@@ -1594,6 +1656,11 @@ function App() {
                       <Eye size={17} />        
                       发布浏览
                     </button>        
+                    <button className="secondary-button" type="button" onClick={openRoamingEditor}>
+                      <Route size={17} />
+                      编辑漫游
+                    </button>
+
                     <button className="secondary-button" type="button" onClick={downloadSourceFiles} disabled={isPublishing}>
                       <Download size={17} />
                       下载浏览源文件
