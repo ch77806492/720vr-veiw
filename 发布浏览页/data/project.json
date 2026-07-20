@@ -1,6 +1,6 @@
 {
   "projectName": "泰安中公学习基地360全景展示",
-  "generatedAt": "2026-07-20T08:42:47.312Z",
+  "generatedAt": "2026-07-20T11:27:15.892Z",
   "activeSceneId": "outdoor-gate",
   "groups": [
     {
@@ -11339,5 +11339,102 @@
       "targetSceneId": "scene-1784104041563",
       "action": "navigate"
     }
-  ]
+  ],
+  "roaming": {
+    "version": 1,
+    "enabled": true,
+    "activeRouteId": "roaming-route-1784543953148-1",
+    "music": {
+      "name": "",
+      "url": "",
+      "assetFileName": ""
+    },
+    "guide": {
+      "assets": {
+        "greeting": {
+          "action": "greeting",
+          "name": "",
+          "url": "",
+          "assetFileName": ""
+        },
+        "talking": {
+          "action": "talking",
+          "name": "",
+          "url": "",
+          "assetFileName": ""
+        },
+        "flying": {
+          "action": "flying",
+          "name": "",
+          "url": "",
+          "assetFileName": ""
+        },
+        "idle": {
+          "action": "idle",
+          "name": "",
+          "url": "",
+          "assetFileName": ""
+        },
+        "leaving": {
+          "action": "leaving",
+          "name": "",
+          "url": "",
+          "assetFileName": ""
+        },
+        "pointing": {
+          "action": "pointing",
+          "name": "",
+          "url": "",
+          "assetFileName": ""
+        }
+      }
+    },
+    "routes": [
+      {
+        "id": "roaming-route-1784543953148-1",
+        "name": "漫游路线1",
+        "stops": [
+          {
+            "id": "roaming-stop-outdoor-gate-1784544200407-0",
+            "sceneId": "outdoor-gate",
+            "duration": 8,
+            "transitionDuration": 1.2,
+            "cameraKeyframes": [
+              {
+                "id": "camera-outdoor-gate-1784544200407",
+                "time": 0,
+                "yaw": 101.32,
+                "pitch": 2.92,
+                "fov": 70
+              },
+              {
+                "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784544628350",
+                "time": 0,
+                "yaw": -24,
+                "pitch": 1,
+                "fov": 70
+              }
+            ],
+            "guideClips": [],
+            "textClips": [
+              {
+                "id": "text-clip-1784545126009-0",
+                "text": "欢迎来到泰安学习基地",
+                "start": 0,
+                "duration": 3,
+                "position": "bottom",
+                "fontSize": 22,
+                "theme": "dark"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "roaming-route-1784544200742-2",
+        "name": "漫游路线2",
+        "stops": []
+      }
+    ]
+  }
 }

@@ -322,6 +322,8 @@ function tourSourceWriterPlugin() {
             `${outputFolder}/assets/planets`,
             `${outputFolder}/assets/animations`,
             `${outputFolder}/assets/audio`,
+            `${outputFolder}/assets/roaming-audio`,
+            `${outputFolder}/assets/roaming-guides`,
           ]);
           const assetPathFromUrl = (url, kind) => {
             const value = String(url || '').split(/[?#]/)[0].replace(/\\/g, '/');
@@ -396,6 +398,8 @@ function tourSourceWriterPlugin() {
           await fs.mkdir(path.join(outputDir, 'assets', 'thumbs'), { recursive: true });
           await fs.mkdir(path.join(outputDir, 'assets', 'planets'), { recursive: true });
           await fs.mkdir(path.join(outputDir, 'assets', 'animations'), { recursive: true });
+          await fs.mkdir(path.join(outputDir, 'assets', 'roaming-audio'), { recursive: true });
+          await fs.mkdir(path.join(outputDir, 'assets', 'roaming-guides'), { recursive: true });
           await fs.mkdir(path.join(outputDir, 'assets', 'manual-tiles'), { recursive: true });
           await fs.mkdir(path.join(outputDir, 'data'), { recursive: true });
           await Promise.all(
