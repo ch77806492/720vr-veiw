@@ -22,10 +22,12 @@ export default function PanoramaViewer({
   onViewChange,
   initialYaw = -24,
   initialPitch = 1,
+  viewFov = 70,
   imageRoll = 0,
 }) {
   const mountRef = useRef(null);
   const sphereRef = useRef(null);
+  const cameraRef = useRef(null);
   const tileGroupRef = useRef(null);
   const tileMaterialsRef = useRef([]);
   const markersRef = useRef([]);
@@ -58,8 +60,14 @@ export default function PanoramaViewer({
     dragRef.current.targetLon = initialYaw;
     dragRef.current.lat = initialPitch;
     dragRef.current.targetLat = initialPitch;
-    callbacksRef.current.onViewChange?.({ yaw: initialYaw, pitch: initialPitch });
-  }, [imageUrl, initialYaw, initialPitch]);
+    callbacksRef.current.onViewChange?.({ yaw: initialYaw, pitch: initialPitch, fov: viewFov });
+  }, [imageUrl, initialYaw, initialPitch, viewFov]);
+
+  useEffect(() => {
+    if (!cameraRef.current) return;
+    cameraRef.current.fov = Math.max(38, Math.min(88, Number(viewFov) || 70));
+    cameraRef.current.updateProjectionMatrix();
+  }, [viewFov]);
 
   useEffect(() => {
     if (!sphereRef.current) return;
@@ -72,8 +80,9 @@ export default function PanoramaViewer({
     if (!mount) return undefined;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(70, mount.clientWidth / mount.clientHeight, 0.1, 1200);
+    const camera = new THREE.PerspectiveCamera(viewFov, mount.clientWidth / mount.clientHeight, 0.1, 1200);
     camera.position.set(0, 0, 0.1);
+    cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -159,6 +168,7 @@ export default function PanoramaViewer({
         callbacksRef.current.onViewChange?.({
           yaw: dragRef.current.targetLon,
           pitch: dragRef.current.targetLat,
+          fov: camera.fov,
         });
       }
       dragRef.current.panoramaActive = false;
@@ -170,6 +180,11 @@ export default function PanoramaViewer({
     const onWheel = (event) => {
       camera.fov = THREE.MathUtils.clamp(camera.fov + event.deltaY * 0.03, 38, 88);
       camera.updateProjectionMatrix();
+      callbacksRef.current.onViewChange?.({
+        yaw: dragRef.current.targetLon,
+        pitch: dragRef.current.targetLat,
+        fov: camera.fov,
+      });
     };
 
     const onResize = () => {
