@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Camera, Crosshair, Film, Music2, Pause, Play, Plus, Route, Save, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Camera, Crosshair, Film, ImagePlus, MessageSquareText, Music2, Pause, Play, Plus, Route, Save, Trash2, Upload } from 'lucide-react';
 import PanoramaViewer from './PanoramaViewer.jsx';
-import { createRoamingRoute, createRoamingStop } from './roamingConfig.js';
+import { GUIDE_ACTIONS, createGuideClip, createRoamingRoute, createRoamingStop, createTextClip } from './roamingConfig.js';
 import './RoamingEditor.css';
 import './RoamingEditorTimeline.css';
+import './RoamingEditorGuide.css';
 
-export default function RoamingEditor({ config, scenes, onChange, onBack, onSave, onUploadMusic, isSaving }) {
+export default function RoamingEditor({ config, scenes, onChange, onBack, onSave, onUploadMusic, onUploadGuide, isSaving }) {
   const activeRoute = config.routes.find((route) => route.id === config.activeRouteId) || config.routes[0];
   const [selectedStopId, setSelectedStopId] = useState(activeRoute?.stops?.[0]?.id || '');
   const [isPlaying, setIsPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(0);
   const [draftView, setDraftView] = useState({ yaw: -24, pitch: 1, fov: 70 });
   const [keyframeTime, setKeyframeTime] = useState(0);
+  const [selectedGuideClipId, setSelectedGuideClipId] = useState('');
+  const [selectedTextClipId, setSelectedTextClipId] = useState('');
   const playbackStartedAtRef = useRef(0);
   const playbackOffsetRef = useRef(0);
   const selectedStop = activeRoute?.stops.find((stop) => stop.id === selectedStopId) || activeRoute?.stops?.[0];
@@ -27,6 +30,17 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
     () => interpolateCamera(previewStop, isPlaying ? playback.localTime : null, draftView),
     [previewStop, isPlaying, playback.localTime, draftView],
   );
+  const selectedGuideClip = selectedStop?.guideClips.find((clip) => clip.id === selectedGuideClipId);
+  const selectedTextClip = selectedStop?.textClips.find((clip) => clip.id === selectedTextClipId);
+  const previewGuideClip = isPlaying
+    ? previewStop?.guideClips.find((clip) => playback.localTime >= clip.start && playback.localTime <= clip.start + clip.duration)
+    : selectedGuideClip;
+  const guideAction = previewGuideClip?.action || 'idle';
+  const guideAsset = config.guide.assets[guideAction]?.url || config.guide.assets.idle?.url || '';
+  const guidePlacement = interpolateGuidePlacement(previewGuideClip, isPlaying ? playback.localTime : null);
+  const previewTextClip = isPlaying
+    ? previewStop?.textClips.find((clip) => playback.localTime >= clip.start && playback.localTime <= clip.start + clip.duration)
+    : selectedTextClip;
 
   useEffect(() => {
     if (!isPlaying || routeDuration <= 0) return undefined;
@@ -114,6 +128,49 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
       cameraKeyframes: selectedStop.cameraKeyframes.filter((keyframe) => keyframe.id !== keyframeId),
     });
   };
+  const deleteGuideAsset = (action) => {
+    patchConfig({
+      guide: {
+        ...config.guide,
+        assets: {
+          ...config.guide.assets,
+          [action]: { action, name: '', url: '', assetFileName: '' },
+        },
+      },
+    });
+  };
+  const addGuideAction = (action) => {
+    if (!selectedStop) return;
+    const clip = { ...createGuideClip(action), start: Math.min(Number(keyframeTime) || 0, selectedStop.duration) };
+    patchStop(selectedStop.id, { guideClips: [...selectedStop.guideClips, clip] });
+    setSelectedGuideClipId(clip.id);
+    setSelectedTextClipId('');
+  };
+  const patchGuideClip = (clipId, patch) => {
+    patchStop(selectedStop.id, {
+      guideClips: selectedStop.guideClips.map((clip) => (clip.id === clipId ? { ...clip, ...patch } : clip)),
+    });
+  };
+  const deleteGuideClip = (clipId) => {
+    patchStop(selectedStop.id, { guideClips: selectedStop.guideClips.filter((clip) => clip.id !== clipId) });
+    setSelectedGuideClipId('');
+  };
+  const addText = () => {
+    if (!selectedStop) return;
+    const clip = { ...createTextClip(), start: Math.min(Number(keyframeTime) || 0, selectedStop.duration) };
+    patchStop(selectedStop.id, { textClips: [...selectedStop.textClips, clip] });
+    setSelectedTextClipId(clip.id);
+    setSelectedGuideClipId('');
+  };
+  const patchTextClip = (clipId, patch) => {
+    patchStop(selectedStop.id, {
+      textClips: selectedStop.textClips.map((clip) => (clip.id === clipId ? { ...clip, ...patch } : clip)),
+    });
+  };
+  const deleteTextClip = (clipId) => {
+    patchStop(selectedStop.id, { textClips: selectedStop.textClips.filter((clip) => clip.id !== clipId) });
+    setSelectedTextClipId('');
+  };
   const togglePlayback = () => {
     if (!routeDuration) return;
     if (!isPlaying && playhead >= routeDuration) setPlayhead(0);
@@ -174,6 +231,7 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
         <section className="roaming-preview-area">
           <div className="roaming-preview-stage">
             {previewScene ? (
+              <>
               <PanoramaViewer
                 imageUrl={previewScene.imageUrl}
                 krpanoTiles={previewScene.krpanoTiles}
@@ -186,6 +244,36 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
                   if (!isPlaying) setDraftView({ yaw: view.yaw, pitch: view.pitch, fov: view.fov || 70 });
                 }}
               />
+              {guideAsset ? (
+                <img
+                  className="roaming-guide-preview"
+                  src={guideAsset}
+                  alt=""
+                  style={{
+                    left: `${guidePlacement.x}%`,
+                    top: `${guidePlacement.y}%`,
+                    width: `${guidePlacement.size}%`,
+                    transform: `translate(-50%,-50%) rotate(${guidePlacement.tilt}deg)`,
+                  }}
+                />
+              ) : null}
+              {previewTextClip ? (
+                <div
+                  className={`roaming-text-preview is-${previewTextClip.position} theme-${previewTextClip.theme}`}
+                  style={{
+                    inset: 'auto',
+                    left: '50%',
+                    top: previewTextClip.position === 'top' ? '7%' : previewTextClip.position === 'center' ? '50%' : 'auto',
+                    bottom: previewTextClip.position === 'bottom' ? '7%' : 'auto',
+                    width: 'max-content',
+                    height: 'auto',
+                    fontSize: `${previewTextClip.fontSize}px`,
+                  }}
+                >
+                  {previewTextClip.text}
+                </div>
+              ) : null}
+              </>
             ) : (
               <div className="roaming-empty-preview"><Route size={32} /><span>从左侧添加场景开始制作路线</span></div>
             )}
@@ -244,6 +332,56 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
               </div>
             </div>
           ) : null}
+          <section className="roaming-guide-assets">
+            <div className="roaming-subheading"><ImagePlus size={16} /><strong>导游动作 WebP</strong></div>
+            {GUIDE_ACTIONS.map((action) => {
+              const asset = config.guide.assets[action.id];
+              return (
+                <div className="roaming-guide-asset-row" key={action.id}>
+                  <strong>{action.label}</strong>
+                  <span>{asset.url ? asset.name || '已添加' : '未添加'}</span>
+                  <label title={`上传${action.label} WebP`}><Upload size={14} /><input type="file" accept="image/webp,.webp" hidden onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) onUploadGuide(action.id, file);
+                    event.target.value = '';
+                  }} /></label>
+                  <button type="button" onClick={() => addGuideAction(action.id)} disabled={!selectedStop || !asset.url} title={`添加${action.label}到导游轨道`}><Plus size={14} /></button>
+                  <button type="button" onClick={() => deleteGuideAsset(action.id)} disabled={!asset.url} title={`删除${action.label}素材`}><Trash2 size={14} /></button>
+                </div>
+              );
+            })}
+          </section>
+          {selectedGuideClip ? (
+            <section className="roaming-clip-inspector">
+              <div className="roaming-subheading"><Upload size={16} /><strong>导游片段</strong></div>
+              <div className="roaming-inline-fields">
+                <label>开始<input type="number" min="0" max={selectedStop.duration} step="0.1" value={selectedGuideClip.start} onChange={(event) => patchGuideClip(selectedGuideClip.id, { start: Number(event.target.value) || 0 })} /></label>
+                <label>时长<input type="number" min="0.5" max={selectedStop.duration} step="0.1" value={selectedGuideClip.duration} onChange={(event) => patchGuideClip(selectedGuideClip.id, { duration: Number(event.target.value) || 0.5 })} /></label>
+              </div>
+              <GuidePositionFields label="电脑端" value={selectedGuideClip.desktop} onChange={(desktop) => patchGuideClip(selectedGuideClip.id, { desktop })} />
+              <GuidePositionFields label="手机端" value={selectedGuideClip.mobile} onChange={(mobile) => patchGuideClip(selectedGuideClip.id, { mobile })} />
+              <button className="roaming-clip-delete" type="button" onClick={() => deleteGuideClip(selectedGuideClip.id)}><Trash2 size={14} />删除导游片段</button>
+            </section>
+          ) : null}
+          <section className="roaming-text-tools">
+            <button type="button" onClick={addText} disabled={!selectedStop}><MessageSquareText size={15} />添加自定义文字</button>
+          </section>
+          {selectedTextClip ? (
+            <section className="roaming-clip-inspector">
+              <div className="roaming-subheading"><MessageSquareText size={16} /><strong>文字片段</strong></div>
+              <label>文字内容<textarea value={selectedTextClip.text} onChange={(event) => patchTextClip(selectedTextClip.id, { text: event.target.value })} /></label>
+              <div className="roaming-inline-fields">
+                <label>开始<input type="number" min="0" max={selectedStop.duration} step="0.1" value={selectedTextClip.start} onChange={(event) => patchTextClip(selectedTextClip.id, { start: Number(event.target.value) || 0 })} /></label>
+                <label>时长<input type="number" min="0.5" max={selectedStop.duration} step="0.1" value={selectedTextClip.duration} onChange={(event) => patchTextClip(selectedTextClip.id, { duration: Number(event.target.value) || 0.5 })} /></label>
+              </div>
+              <div className="roaming-inline-fields">
+                <label>位置<select value={selectedTextClip.position} onChange={(event) => patchTextClip(selectedTextClip.id, { position: event.target.value })}><option value="top">顶部</option><option value="center">居中</option><option value="bottom">底部</option></select></label>
+                <label>背景<select value={selectedTextClip.theme} onChange={(event) => patchTextClip(selectedTextClip.id, { theme: event.target.value })}><option value="dark">深色</option><option value="light">浅色</option><option value="none">无背景</option></select></label>
+              </div>
+              <label>字号 {selectedTextClip.fontSize}px<input type="range" min="14" max="42" value={selectedTextClip.fontSize} onChange={(event) => patchTextClip(selectedTextClip.id, { fontSize: Number(event.target.value) })} /></label>
+              <button className="roaming-clip-delete" type="button" onClick={() => deleteTextClip(selectedTextClip.id)}><Trash2 size={14} />删除文字片段</button>
+            </section>
+          ) : null}
           <button className="roaming-delete-route" type="button" onClick={deleteRoute} disabled={config.routes.length <= 1}><Trash2 size={16} />删除当前路线</button>
         </aside>
       </section>
@@ -276,8 +414,40 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
             </div>
           )) : <div className="roaming-track-placeholder">选择场景片段后添加视角关键帧</div>}
         </TimelineRow>
-        <TimelineRow label="导游轨道" icon={<Upload size={16} />}><div className="roaming-track-placeholder">打招呼、说话、飞行移动、暂停、离场、指路</div></TimelineRow>
-        <TimelineRow label="文字轨道" icon={<Film size={16} />}><div className="roaming-track-placeholder">添加自定义文字片段</div></TimelineRow>
+        <TimelineRow label="导游轨道" icon={<Upload size={16} />}>
+          {activeRoute.stops.length ? activeRoute.stops.map((stop) => (
+            <div className="roaming-overlay-track" key={stop.id} style={{ width: `${Math.max(110, stop.duration * 18)}px` }}>
+              {stop.guideClips.map((clip) => (
+                <button
+                  type="button"
+                  className={`roaming-action-clip ${selectedGuideClipId === clip.id ? 'is-active' : ''}`}
+                  key={clip.id}
+                  style={{ left: `${(clip.start / stop.duration) * 100}%`, width: `${Math.max(14, (clip.duration / stop.duration) * 100)}%` }}
+                  onClick={() => { setSelectedStopId(stop.id); setSelectedGuideClipId(clip.id); setSelectedTextClipId(''); }}
+                >
+                  {GUIDE_ACTIONS.find((action) => action.id === clip.action)?.label || '动作'}
+                </button>
+              ))}
+            </div>
+          )) : <div className="roaming-track-placeholder">先添加场景片段</div>}
+        </TimelineRow>
+        <TimelineRow label="文字轨道" icon={<MessageSquareText size={16} />}>
+          {activeRoute.stops.length ? activeRoute.stops.map((stop) => (
+            <div className="roaming-overlay-track" key={stop.id} style={{ width: `${Math.max(110, stop.duration * 18)}px` }}>
+              {stop.textClips.map((clip) => (
+                <button
+                  type="button"
+                  className={`roaming-text-clip ${selectedTextClipId === clip.id ? 'is-active' : ''}`}
+                  key={clip.id}
+                  style={{ left: `${(clip.start / stop.duration) * 100}%`, width: `${Math.max(14, (clip.duration / stop.duration) * 100)}%` }}
+                  onClick={() => { setSelectedStopId(stop.id); setSelectedTextClipId(clip.id); setSelectedGuideClipId(''); }}
+                >
+                  {clip.text}
+                </button>
+              ))}
+            </div>
+          )) : <div className="roaming-track-placeholder">先添加场景片段</div>}
+        </TimelineRow>
       </section>
     </main>
   );
@@ -285,6 +455,21 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
 
 function TimelineRow({ label, icon, children }) {
   return <div className="roaming-track-row"><div className="roaming-track-label">{icon}<span>{label}</span></div><div className="roaming-track-content">{children}</div></div>;
+}
+
+function GuidePositionFields({ label, value, onChange }) {
+  const field = (key, next) => onChange({ ...value, [key]: Number(next) || 0 });
+  return (
+    <fieldset className="roaming-position-fields">
+      <legend>{label}</legend>
+      <label>X<input type="number" min="0" max="100" value={value.x} onChange={(event) => field('x', event.target.value)} /></label>
+      <label>Y<input type="number" min="0" max="100" value={value.y} onChange={(event) => field('y', event.target.value)} /></label>
+      <label>终点X<input type="number" min="0" max="100" value={value.endX} onChange={(event) => field('endX', event.target.value)} /></label>
+      <label>终点Y<input type="number" min="0" max="100" value={value.endY} onChange={(event) => field('endY', event.target.value)} /></label>
+      <label>大小<input type="number" min="8" max="34" value={value.size} onChange={(event) => field('size', event.target.value)} /></label>
+      <label>倾斜<input type="number" min="-45" max="45" value={value.tilt} onChange={(event) => field('tilt', event.target.value)} /></label>
+    </fieldset>
+  );
 }
 
 function locatePlayback(route, time) {
@@ -314,6 +499,17 @@ function interpolateCamera(stop, localTime, fallback) {
     yaw: before.yaw + yawDelta * progress,
     pitch: before.pitch + (after.pitch - before.pitch) * progress,
     fov: (before.fov || 70) + ((after.fov || 70) - (before.fov || 70)) * progress,
+  };
+}
+
+function interpolateGuidePlacement(clip, localTime) {
+  const placement = clip?.desktop || { x: 82, y: 72, endX: 82, endY: 72, size: 14, tilt: 0 };
+  if (!clip || localTime == null || clip.action !== 'flying') return placement;
+  const progress = Math.max(0, Math.min(1, (localTime - clip.start) / Math.max(0.1, clip.duration)));
+  return {
+    ...placement,
+    x: placement.x + (placement.endX - placement.x) * progress,
+    y: placement.y + (placement.endY - placement.y) * progress,
   };
 }
 

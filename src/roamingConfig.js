@@ -32,6 +32,39 @@ export const createDefaultRoamingConfig = () => {
 
 const finite = (value, fallback) => (Number.isFinite(Number(value)) ? Number(value) : fallback);
 
+const normalizeGuideClip = (clip, duration, index) => ({
+  id: clip.id || `guide-clip-${Date.now()}-${index}`,
+  action: GUIDE_ACTIONS.some((action) => action.id === clip.action) ? clip.action : 'idle',
+  start: Math.max(0, Math.min(duration, finite(clip.start, 0))),
+  duration: Math.max(0.5, Math.min(duration, finite(clip.duration, 2))),
+  desktop: {
+    x: Math.max(8, Math.min(92, finite(clip.desktop?.x, 82))),
+    y: Math.max(10, Math.min(88, finite(clip.desktop?.y, 72))),
+    endX: Math.max(8, Math.min(92, finite(clip.desktop?.endX, clip.desktop?.x ?? 82))),
+    endY: Math.max(10, Math.min(88, finite(clip.desktop?.endY, clip.desktop?.y ?? 72))),
+    size: Math.max(8, Math.min(30, finite(clip.desktop?.size, 14))),
+    tilt: Math.max(-45, Math.min(45, finite(clip.desktop?.tilt, 0))),
+  },
+  mobile: {
+    x: Math.max(12, Math.min(88, finite(clip.mobile?.x, 72))),
+    y: Math.max(12, Math.min(82, finite(clip.mobile?.y, 66))),
+    endX: Math.max(12, Math.min(88, finite(clip.mobile?.endX, clip.mobile?.x ?? 72))),
+    endY: Math.max(12, Math.min(82, finite(clip.mobile?.endY, clip.mobile?.y ?? 66))),
+    size: Math.max(14, Math.min(34, finite(clip.mobile?.size, 22))),
+    tilt: Math.max(-45, Math.min(45, finite(clip.mobile?.tilt, 0))),
+  },
+});
+
+const normalizeTextClip = (clip, duration, index) => ({
+  id: clip.id || `text-clip-${Date.now()}-${index}`,
+  text: String(clip.text || '请输入导览文字'),
+  start: Math.max(0, Math.min(duration, finite(clip.start, 0))),
+  duration: Math.max(0.5, Math.min(duration, finite(clip.duration, 3))),
+  position: ['top', 'center', 'bottom'].includes(clip.position) ? clip.position : 'bottom',
+  fontSize: Math.max(14, Math.min(42, finite(clip.fontSize, 22))),
+  theme: ['dark', 'light', 'none'].includes(clip.theme) ? clip.theme : 'dark',
+});
+
 const normalizeStop = (stop, scenes, index) => {
   const scene = scenes.find((item) => item.id === stop?.sceneId);
   if (!scene) return null;
@@ -51,8 +84,8 @@ const normalizeStop = (stop, scenes, index) => {
             pitch: finite(scene.initialPitch, 1),
             fov: 70,
           }],
-    guideClips: Array.isArray(stop.guideClips) ? stop.guideClips : [],
-    textClips: Array.isArray(stop.textClips) ? stop.textClips : [],
+    guideClips: (Array.isArray(stop.guideClips) ? stop.guideClips : []).map((clip, clipIndex) => normalizeGuideClip(clip, duration, clipIndex)),
+    textClips: (Array.isArray(stop.textClips) ? stop.textClips : []).map((clip, clipIndex) => normalizeTextClip(clip, duration, clipIndex)),
   };
 };
 
@@ -101,3 +134,7 @@ export const createRoamingStop = (scene, index = 0) => ({
   guideClips: [],
   textClips: [],
 });
+
+export const createGuideClip = (action = 'idle') => normalizeGuideClip({ action }, 8, 0);
+
+export const createTextClip = () => normalizeTextClip({}, 8, 0);

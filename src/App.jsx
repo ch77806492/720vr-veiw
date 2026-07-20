@@ -1509,6 +1509,39 @@ function App() {
     }
   };
 
+  const uploadRoamingGuide = async (action, file) => {
+    if (!file || !/\.webp$/i.test(file.name)) {
+      window.alert('导游动作仅支持 WebP 动画。');
+      return;
+    }
+    setIsPublishing(true);
+    try {
+      const uploaded = await uploadAssetFile(file, 'roaming-guides', `guide-${action}.webp`, { stable: true });
+      setRoamingConfig((current) => ({
+        ...current,
+        enabled: true,
+        guide: {
+          ...current.guide,
+          assets: {
+            ...current.guide.assets,
+            [action]: {
+              action,
+              name: file.name,
+              url: uploaded.url,
+              assetFileName: uploaded.filename || file.name,
+            },
+          },
+        },
+      }));
+      setPublishState('导游动作素材已添加');
+    } catch (error) {
+      console.error(error);
+      setPublishState(error instanceof Error ? error.message : '导游动作上传失败');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const saveRoamingConfiguration = async () => {
     setIsPublishing(true);
     try {
@@ -1535,6 +1568,7 @@ function App() {
         onBack={() => setEditorMode('panorama')}
         onSave={saveRoamingConfiguration}
         onUploadMusic={uploadRoamingMusic}
+        onUploadGuide={uploadRoamingGuide}
         isSaving={isPublishing}
       />
     );
