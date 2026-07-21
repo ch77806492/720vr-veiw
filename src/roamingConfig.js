@@ -1,11 +1,28 @@
 export const GUIDE_ACTIONS = [
-  { id: 'greeting', label: '打招呼' },
-  { id: 'talking', label: '说话' },
-  { id: 'flying', label: '飞行移动' },
-  { id: 'idle', label: '暂停' },
-  { id: 'leaving', label: '离场' },
-  { id: 'pointing', label: '指路' },
+  { id: 'welcome', label: '欢迎' },
+  { id: 'selfIntroduction', label: '自我介绍' },
+  { id: 'expandedIntroduction', label: '展开介绍' },
+  { id: 'singleHandExplanation', label: '单手讲解' },
+  { id: 'emphasis', label: '强调重点' },
+  { id: 'hoverExplanation', label: '悬浮讲解' },
+  { id: 'flyingTransition', label: '飞行转场' },
+  { id: 'pointLeft', label: '左指示' },
+  { id: 'pointRight', label: '右指示' },
 ];
+
+const LEGACY_GUIDE_ACTIONS = {
+  greeting: 'welcome',
+  talking: 'selfIntroduction',
+  flying: 'flyingTransition',
+  idle: 'hoverExplanation',
+  leaving: 'flyingTransition',
+  pointing: 'pointRight',
+};
+
+const normalizeGuideAction = (action) => {
+  const nextAction = LEGACY_GUIDE_ACTIONS[action] || action;
+  return GUIDE_ACTIONS.some((item) => item.id === nextAction) ? nextAction : 'hoverExplanation';
+};
 
 const createGuideAssets = () =>
   Object.fromEntries(
@@ -21,7 +38,7 @@ export const createRoamingRoute = (index = 1) => ({
 export const createDefaultRoamingConfig = () => {
   const route = createRoamingRoute(1);
   return {
-    version: 2,
+    version: 3,
     enabled: false,
     activeRouteId: route.id,
     music: { name: '', url: '', assetFileName: '' },
@@ -46,7 +63,7 @@ const normalizeTimedClip = (clip, duration, fallbackDuration = 3) => {
 
 const normalizeGuideClip = (clip, duration, index) => ({
   id: clip.id || `guide-clip-${Date.now()}-${index}`,
-  action: GUIDE_ACTIONS.some((action) => action.id === clip.action) ? clip.action : 'idle',
+  action: normalizeGuideAction(clip.action),
   ...normalizeTimedClip(clip, duration, 2),
   desktop: {
     x: Math.max(8, Math.min(92, finite(clip.desktop?.x, 82))),
@@ -144,13 +161,19 @@ export const normalizeRoamingConfig = (value, scenes = []) => {
   );
   const assets = createGuideAssets();
   GUIDE_ACTIONS.forEach((action) => {
-    assets[action.id] = { ...assets[action.id], ...(value?.guide?.assets?.[action.id] || {}) };
+    assets[action.id] = { ...assets[action.id], ...(value?.guide?.assets?.[action.id] || {}), action: action.id };
+  });
+  Object.entries(LEGACY_GUIDE_ACTIONS).forEach(([legacyAction, nextAction]) => {
+    const legacyAsset = value?.guide?.assets?.[legacyAction];
+    if (legacyAsset?.url && !assets[nextAction].url) {
+      assets[nextAction] = { ...assets[nextAction], ...legacyAsset, action: nextAction };
+    }
   });
   const activeRouteId = routes.some((route) => route.id === value?.activeRouteId)
     ? value.activeRouteId
     : routes[0].id;
   return {
-    version: 2,
+    version: 3,
     enabled: Boolean(value?.enabled),
     activeRouteId,
     music: { ...fallback.music, ...(value?.music || {}) },
@@ -179,7 +202,7 @@ export const createRoamingStop = (scene, index = 0) => ({
   imageClips: [],
 });
 
-export const createGuideClip = (action = 'idle') => normalizeGuideClip({ action }, 8, 0);
+export const createGuideClip = (action = 'hoverExplanation') => normalizeGuideClip({ action }, 8, 0);
 
 export const createNarrationClip = (asset = {}) => normalizeNarrationClip(asset, 8, 0);
 

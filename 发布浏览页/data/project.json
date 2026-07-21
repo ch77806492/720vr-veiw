@@ -11341,7 +11341,7 @@
     }
   ],
   "roaming": {
-    "version": 2,
+    "version": 3,
     "enabled": false,
     "activeRouteId": "roaming-route-1784543953148-1",
     "music": {
@@ -11351,38 +11351,56 @@
     },
     "guide": {
       "assets": {
-        "greeting": {
-          "action": "greeting",
+        "welcome": {
+          "action": "welcome",
           "name": "",
           "url": "",
           "assetFileName": ""
         },
-        "talking": {
-          "action": "talking",
+        "selfIntroduction": {
+          "action": "selfIntroduction",
           "name": "",
           "url": "",
           "assetFileName": ""
         },
-        "flying": {
-          "action": "flying",
+        "expandedIntroduction": {
+          "action": "expandedIntroduction",
           "name": "",
           "url": "",
           "assetFileName": ""
         },
-        "idle": {
-          "action": "idle",
+        "singleHandExplanation": {
+          "action": "singleHandExplanation",
           "name": "",
           "url": "",
           "assetFileName": ""
         },
-        "leaving": {
-          "action": "leaving",
+        "emphasis": {
+          "action": "emphasis",
           "name": "",
           "url": "",
           "assetFileName": ""
         },
-        "pointing": {
-          "action": "pointing",
+        "hoverExplanation": {
+          "action": "hoverExplanation",
+          "name": "",
+          "url": "",
+          "assetFileName": ""
+        },
+        "flyingTransition": {
+          "action": "flyingTransition",
+          "name": "",
+          "url": "",
+          "assetFileName": ""
+        },
+        "pointLeft": {
+          "action": "pointLeft",
+          "name": "",
+          "url": "",
+          "assetFileName": ""
+        },
+        "pointRight": {
+          "action": "pointRight",
           "name": "",
           "url": "",
           "assetFileName": ""
