@@ -24,6 +24,9 @@
   <div class="roaming-status"><span id="roamingStatus">准备开始</span><span id="roamingTime">00:00 / 00:00</span></div>
   <div class="roaming-actions"><button id="roamingPrev" type="button" title="上一个场景">‹</button><button id="roamingPause" type="button">暂停漫游</button><button id="roamingNext" type="button" title="下一个场景">›</button><button id="roamingExit" type="button" title="退出漫游">×</button></div>
 </section>
+<section class="roaming-entry-dialog" id="roamingEntryDialog" role="dialog" aria-modal="true" aria-labelledby="roamingEntryTitle">
+  <div class="roaming-entry-panel"><h2 id="roamingEntryTitle">是否进入漫游？</h2><p>即将开始校园自动漫游。</p><div class="roaming-entry-actions"><button id="roamingEntryCancel" type="button">取消</button><button class="primary" id="roamingEntryConfirm" type="button">确定进入</button></div></div>
+</section>
 <img class="roaming-guide-overlay" id="roamingGuide" alt="" />
 <img class="roaming-image-overlay" id="roamingImage" alt="" />
 <aside class="floating-map"><h2 id="mapTitle"></h2><div class="map-card" id="mapCard"></div></aside>

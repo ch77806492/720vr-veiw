@@ -1,6 +1,6 @@
 {
   "projectName": "泰安中公学习基地360全景展示",
-  "generatedAt": "2026-07-21T01:15:34.135Z",
+  "generatedAt": "2026-07-21T11:12:07.756Z",
   "activeSceneId": "outdoor-gate",
   "groups": [
     {
@@ -11349,6 +11349,15 @@
       "url": "",
       "assetFileName": ""
     },
+    "secretEntry": {
+      "enabled": true,
+      "sceneId": "outdoor-gate",
+      "yaw": 101.32,
+      "pitch": 16,
+      "width": 14,
+      "height": 34,
+      "clicks": 5
+    },
     "guide": {
       "assets": {
         "welcome": {
@@ -11415,7 +11424,7 @@
           {
             "id": "roaming-stop-outdoor-gate-1784544200407-0",
             "sceneId": "outdoor-gate",
-            "duration": 8,
+            "duration": 6,
             "transitionDuration": 1.2,
             "cameraKeyframes": [
               {
@@ -11427,20 +11436,36 @@
                 "zoom": 100
               },
               {
-                "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784595957761",
-                "time": 4,
-                "yaw": -252.48,
-                "pitch": 13,
+                "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784597352443",
+                "time": 1,
+                "yaw": 11.88,
+                "pitch": 2.68,
                 "fov": 70,
                 "zoom": 100
               },
               {
-                "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784595971264",
-                "time": 8,
-                "yaw": -260.04,
-                "pitch": 15.4,
-                "fov": 46.05263157894737,
-                "zoom": 152
+                "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784597360419",
+                "time": 2.7,
+                "yaw": 100.68,
+                "pitch": 6.76,
+                "fov": 70,
+                "zoom": 100
+              },
+              {
+                "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784599182684",
+                "time": 3.8,
+                "yaw": 96.6,
+                "pitch": 14.08,
+                "fov": 30.434782608695652,
+                "zoom": 230
+              },
+              {
+                "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784599242647",
+                "time": 6,
+                "yaw": 99.84,
+                "pitch": 10.84,
+                "fov": 30.434782608695652,
+                "zoom": 230
               }
             ],
             "guideClips": [],

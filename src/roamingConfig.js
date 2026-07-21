@@ -42,6 +42,7 @@ export const createDefaultRoamingConfig = () => {
     enabled: false,
     activeRouteId: route.id,
     music: { name: '', url: '', assetFileName: '' },
+    secretEntry: { enabled: false, sceneId: '', yaw: 0, pitch: 0, width: 14, height: 34, clicks: 5 },
     guide: { assets: createGuideAssets() },
     routes: [route],
   };
@@ -177,6 +178,15 @@ export const normalizeRoamingConfig = (value, scenes = []) => {
     enabled: Boolean(value?.enabled),
     activeRouteId,
     music: { ...fallback.music, ...(value?.music || {}) },
+    secretEntry: {
+      enabled: Boolean(value?.secretEntry?.enabled),
+      sceneId: String(value?.secretEntry?.sceneId || ''),
+      yaw: finite(value?.secretEntry?.yaw, 0),
+      pitch: clamp(finite(value?.secretEntry?.pitch, 0), -78, 78),
+      width: clamp(finite(value?.secretEntry?.width, 14), 4, 60),
+      height: clamp(finite(value?.secretEntry?.height, 34), 4, 80),
+      clicks: Math.round(clamp(finite(value?.secretEntry?.clicks, 5), 2, 10)),
+    },
     guide: { assets },
     routes,
   };
