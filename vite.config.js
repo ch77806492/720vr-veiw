@@ -275,7 +275,7 @@ function tourSourceWriterPlugin() {
         try {
           const requestUrl = new URL(req.url || '/', 'http://localhost');
           const requestedKind = requestUrl.searchParams.get('kind');
-          const allowedKinds = new Set(['maps', 'thumbs', 'animations', 'roaming-audio', 'roaming-guides']);
+          const allowedKinds = new Set(['maps', 'thumbs', 'animations', 'roaming-audio', 'roaming-guides', 'roaming-narration', 'roaming-images']);
           const kind = allowedKinds.has(requestedKind) ? requestedKind : 'panoramas';
           const stable = requestUrl.searchParams.get('stable') === '1';
           const originalName = safeFilePart(requestUrl.searchParams.get('name'), `${kind}-asset`);
@@ -324,6 +324,8 @@ function tourSourceWriterPlugin() {
             `${outputFolder}/assets/audio`,
             `${outputFolder}/assets/roaming-audio`,
             `${outputFolder}/assets/roaming-guides`,
+            `${outputFolder}/assets/roaming-narration`,
+            `${outputFolder}/assets/roaming-images`,
           ]);
           const assetPathFromUrl = (url, kind) => {
             const value = String(url || '').split(/[?#]/)[0].replace(/\\/g, '/');
@@ -400,6 +402,8 @@ function tourSourceWriterPlugin() {
           await fs.mkdir(path.join(outputDir, 'assets', 'animations'), { recursive: true });
           await fs.mkdir(path.join(outputDir, 'assets', 'roaming-audio'), { recursive: true });
           await fs.mkdir(path.join(outputDir, 'assets', 'roaming-guides'), { recursive: true });
+          await fs.mkdir(path.join(outputDir, 'assets', 'roaming-narration'), { recursive: true });
+          await fs.mkdir(path.join(outputDir, 'assets', 'roaming-images'), { recursive: true });
           await fs.mkdir(path.join(outputDir, 'assets', 'manual-tiles'), { recursive: true });
           await fs.mkdir(path.join(outputDir, 'data'), { recursive: true });
           await Promise.all(

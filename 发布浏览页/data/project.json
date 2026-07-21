@@ -1,6 +1,6 @@
 {
   "projectName": "泰安中公学习基地360全景展示",
-  "generatedAt": "2026-07-20T11:27:15.892Z",
+  "generatedAt": "2026-07-21T00:55:00.060Z",
   "activeSceneId": "outdoor-gate",
   "groups": [
     {
@@ -11341,7 +11341,7 @@
     }
   ],
   "roaming": {
-    "version": 1,
+    "version": 2,
     "enabled": true,
     "activeRouteId": "roaming-route-1784543953148-1",
     "music": {
@@ -11405,28 +11405,48 @@
                 "time": 0,
                 "yaw": 101.32,
                 "pitch": 2.92,
-                "fov": 70
+                "fov": 70,
+                "zoom": 100
               },
               {
                 "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784544628350",
                 "time": 0,
                 "yaw": -24,
                 "pitch": 1,
-                "fov": 70
+                "fov": 70,
+                "zoom": 100
               }
             ],
             "guideClips": [],
-            "textClips": [
+            "narrationClips": [],
+            "imageClips": []
+          },
+          {
+            "id": "roaming-stop-building-1-1f-hall-1784594335018-1",
+            "sceneId": "building-1-1f-hall",
+            "duration": 8,
+            "transitionDuration": 1.2,
+            "cameraKeyframes": [
               {
-                "id": "text-clip-1784545126009-0",
-                "text": "欢迎来到泰安学习基地",
-                "start": 0,
-                "duration": 3,
-                "position": "bottom",
-                "fontSize": 22,
-                "theme": "dark"
+                "id": "camera-building-1-1f-hall-1784594335018",
+                "time": 0,
+                "yaw": -99.24,
+                "pitch": -4.88,
+                "fov": 70,
+                "zoom": 100
+              },
+              {
+                "id": "camera-roaming-stop-building-1-1f-hall-1784594335018-1-1784594356105",
+                "time": 3.7,
+                "yaw": 98.04,
+                "pitch": -2.72,
+                "fov": 70,
+                "zoom": 100
               }
-            ]
+            ],
+            "guideClips": [],
+            "narrationClips": [],
+            "imageClips": []
           }
         ]
       },

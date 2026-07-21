@@ -65,7 +65,7 @@ export default function PanoramaViewer({
 
   useEffect(() => {
     if (!cameraRef.current) return;
-    cameraRef.current.fov = Math.max(38, Math.min(88, Number(viewFov) || 70));
+    cameraRef.current.fov = Math.max(30, Math.min(88, Number(viewFov) || 70));
     cameraRef.current.updateProjectionMatrix();
   }, [viewFov]);
 
@@ -178,7 +178,7 @@ export default function PanoramaViewer({
     };
 
     const onWheel = (event) => {
-      camera.fov = THREE.MathUtils.clamp(camera.fov + event.deltaY * 0.03, 38, 88);
+      camera.fov = THREE.MathUtils.clamp(camera.fov + event.deltaY * 0.03, 30, 88);
       camera.updateProjectionMatrix();
       callbacksRef.current.onViewChange?.({
         yaw: dragRef.current.targetLon,

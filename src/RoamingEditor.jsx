@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Camera, Crosshair, Film, ImagePlus, MessageSquareText, Music2, Pause, Play, Plus, Route, Save, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Camera, Crosshair, FileAudio, Film, ImagePlus, Images, Music2, Pause, Play, Plus, Route, Save, Trash2, Upload } from 'lucide-react';
 import PanoramaViewer from './PanoramaViewer.jsx';
-import { GUIDE_ACTIONS, createGuideClip, createRoamingRoute, createRoamingStop, createTextClip } from './roamingConfig.js';
+import { GUIDE_ACTIONS, createGuideClip, createImageClip, createNarrationClip, createRoamingRoute, createRoamingStop, fovToZoom, zoomToFov } from './roamingConfig.js';
 import './RoamingEditor.css';
 import './RoamingEditorTimeline.css';
 import './RoamingEditorGuide.css';
+import './RoamingEditorMedia.css';
 
-export default function RoamingEditor({ config, scenes, onChange, onBack, onSave, onUploadMusic, onUploadGuide, isSaving }) {
+export default function RoamingEditor({ config, scenes, onChange, onBack, onSave, onUploadMusic, onUploadGuide, onUploadNarration, onUploadImage, isSaving }) {
   const activeRoute = config.routes.find((route) => route.id === config.activeRouteId) || config.routes[0];
   const [selectedStopId, setSelectedStopId] = useState(activeRoute?.stops?.[0]?.id || '');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -14,9 +15,11 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
   const [draftView, setDraftView] = useState({ yaw: -24, pitch: 1, fov: 70 });
   const [keyframeTime, setKeyframeTime] = useState(0);
   const [selectedGuideClipId, setSelectedGuideClipId] = useState('');
-  const [selectedTextClipId, setSelectedTextClipId] = useState('');
+  const [selectedNarrationClipId, setSelectedNarrationClipId] = useState('');
+  const [selectedImageClipId, setSelectedImageClipId] = useState('');
   const playbackStartedAtRef = useRef(0);
   const playbackOffsetRef = useRef(0);
+  const narrationAudioRef = useRef(null);
   const selectedStop = activeRoute?.stops.find((stop) => stop.id === selectedStopId) || activeRoute?.stops?.[0];
   const selectedScene = scenes.find((scene) => scene.id === selectedStop?.sceneId) || scenes[0];
   const routeDuration = useMemo(
@@ -31,16 +34,34 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
     [previewStop, isPlaying, playback.localTime, draftView],
   );
   const selectedGuideClip = selectedStop?.guideClips.find((clip) => clip.id === selectedGuideClipId);
-  const selectedTextClip = selectedStop?.textClips.find((clip) => clip.id === selectedTextClipId);
+  const selectedNarrationClip = selectedStop?.narrationClips.find((clip) => clip.id === selectedNarrationClipId);
+  const selectedImageClip = selectedStop?.imageClips.find((clip) => clip.id === selectedImageClipId);
   const previewGuideClip = isPlaying
     ? previewStop?.guideClips.find((clip) => playback.localTime >= clip.start && playback.localTime <= clip.start + clip.duration)
     : selectedGuideClip;
   const guideAction = previewGuideClip?.action || 'idle';
   const guideAsset = config.guide.assets[guideAction]?.url || config.guide.assets.idle?.url || '';
   const guidePlacement = interpolateGuidePlacement(previewGuideClip, isPlaying ? playback.localTime : null);
-  const previewTextClip = isPlaying
-    ? previewStop?.textClips.find((clip) => playback.localTime >= clip.start && playback.localTime <= clip.start + clip.duration)
-    : selectedTextClip;
+  const previewNarrationClip = isPlaying
+    ? previewStop?.narrationClips.find((clip) => playback.localTime >= clip.start && playback.localTime <= clip.start + clip.duration)
+    : null;
+  const previewImageClip = isPlaying
+    ? previewStop?.imageClips.find((clip) => playback.localTime >= clip.start && playback.localTime <= clip.start + clip.duration)
+    : selectedImageClip;
+
+  useEffect(() => {
+    if (!narrationAudioRef.current) narrationAudioRef.current = new Audio();
+    const audio = narrationAudioRef.current;
+    if (!isPlaying || !previewNarrationClip?.url) {
+      audio.pause();
+      return;
+    }
+    if (audio.src !== new URL(previewNarrationClip.url, window.location.href).href) audio.src = previewNarrationClip.url;
+    audio.currentTime = Math.max(0, (Number(previewNarrationClip.trimStart) || 0) + playback.localTime - previewNarrationClip.start);
+    audio.play().catch(() => {});
+  }, [isPlaying, previewNarrationClip?.id, previewNarrationClip?.url, previewNarrationClip?.trimStart]);
+
+  useEffect(() => () => narrationAudioRef.current?.pause(), []);
 
   useEffect(() => {
     if (!isPlaying || routeDuration <= 0) return undefined;
@@ -110,6 +131,7 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
       yaw: Number(draftView.yaw.toFixed(2)),
       pitch: Number(draftView.pitch.toFixed(2)),
       fov: Math.round(draftView.fov || 70),
+      zoom: Math.round(fovToZoom(draftView.fov || 70)),
     };
     patchStop(selectedStop.id, {
       cameraKeyframes: [...selectedStop.cameraKeyframes, keyframe].sort((a, b) => a.time - b.time),
@@ -144,7 +166,8 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
     const clip = { ...createGuideClip(action), start: Math.min(Number(keyframeTime) || 0, selectedStop.duration) };
     patchStop(selectedStop.id, { guideClips: [...selectedStop.guideClips, clip] });
     setSelectedGuideClipId(clip.id);
-    setSelectedTextClipId('');
+    setSelectedNarrationClipId('');
+    setSelectedImageClipId('');
   };
   const patchGuideClip = (clipId, patch) => {
     patchStop(selectedStop.id, {
@@ -155,21 +178,43 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
     patchStop(selectedStop.id, { guideClips: selectedStop.guideClips.filter((clip) => clip.id !== clipId) });
     setSelectedGuideClipId('');
   };
-  const addText = () => {
-    if (!selectedStop) return;
-    const clip = { ...createTextClip(), start: Math.min(Number(keyframeTime) || 0, selectedStop.duration) };
-    patchStop(selectedStop.id, { textClips: [...selectedStop.textClips, clip] });
-    setSelectedTextClipId(clip.id);
+  const addNarration = async (file) => {
+    if (!selectedStop || !file) return;
+    const asset = await onUploadNarration(file);
+    if (!asset) return;
+    const clip = { ...createNarrationClip(asset), ...asset, start: Math.min(Number(keyframeTime) || 0, Math.max(0, selectedStop.duration - 0.5)) };
+    patchStop(selectedStop.id, { narrationClips: [...selectedStop.narrationClips, clip] });
+    setSelectedNarrationClipId(clip.id);
     setSelectedGuideClipId('');
+    setSelectedImageClipId('');
   };
-  const patchTextClip = (clipId, patch) => {
+  const patchNarrationClip = (clipId, patch) => {
     patchStop(selectedStop.id, {
-      textClips: selectedStop.textClips.map((clip) => (clip.id === clipId ? { ...clip, ...patch } : clip)),
+      narrationClips: selectedStop.narrationClips.map((clip) => (clip.id === clipId ? { ...clip, ...patch } : clip)),
     });
   };
-  const deleteTextClip = (clipId) => {
-    patchStop(selectedStop.id, { textClips: selectedStop.textClips.filter((clip) => clip.id !== clipId) });
-    setSelectedTextClipId('');
+  const deleteNarrationClip = (clipId) => {
+    patchStop(selectedStop.id, { narrationClips: selectedStop.narrationClips.filter((clip) => clip.id !== clipId) });
+    setSelectedNarrationClipId('');
+  };
+  const addImage = async (file) => {
+    if (!selectedStop || !file) return;
+    const asset = await onUploadImage(file);
+    if (!asset) return;
+    const clip = { ...createImageClip(asset), ...asset, start: Math.min(Number(keyframeTime) || 0, Math.max(0, selectedStop.duration - 0.5)) };
+    patchStop(selectedStop.id, { imageClips: [...selectedStop.imageClips, clip] });
+    setSelectedImageClipId(clip.id);
+    setSelectedGuideClipId('');
+    setSelectedNarrationClipId('');
+  };
+  const patchImageClip = (clipId, patch) => {
+    patchStop(selectedStop.id, {
+      imageClips: selectedStop.imageClips.map((clip) => (clip.id === clipId ? { ...clip, ...patch } : clip)),
+    });
+  };
+  const deleteImageClip = (clipId) => {
+    patchStop(selectedStop.id, { imageClips: selectedStop.imageClips.filter((clip) => clip.id !== clipId) });
+    setSelectedImageClipId('');
   };
   const togglePlayback = () => {
     if (!routeDuration) return;
@@ -257,21 +302,17 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
                   }}
                 />
               ) : null}
-              {previewTextClip ? (
-                <div
-                  className={`roaming-text-preview is-${previewTextClip.position} theme-${previewTextClip.theme}`}
+              {previewImageClip?.url ? (
+                <img
+                  className="roaming-inserted-image-preview"
+                  src={previewImageClip.url}
+                  alt=""
                   style={{
-                    inset: 'auto',
-                    left: '50%',
-                    top: previewTextClip.position === 'top' ? '7%' : previewTextClip.position === 'center' ? '50%' : 'auto',
-                    bottom: previewTextClip.position === 'bottom' ? '7%' : 'auto',
-                    width: 'max-content',
-                    height: 'auto',
-                    fontSize: `${previewTextClip.fontSize}px`,
+                    left: `${previewImageClip.desktop.x}%`,
+                    top: `${previewImageClip.desktop.y}%`,
+                    width: `${previewImageClip.desktop.size}%`,
                   }}
-                >
-                  {previewTextClip.text}
-                </div>
+                />
               ) : null}
               </>
             ) : (
@@ -314,9 +355,13 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
                 <p>在预览中拖到目标角度，再添加到当前时间。</p>
                 <div className="roaming-capture-row">
                   <input type="number" min="0" max={selectedStop.duration} step="0.1" value={keyframeTime} onChange={(event) => setKeyframeTime(event.target.value)} />
-                  <button type="button" onClick={addCameraKeyframe}><Plus size={15} />添加</button>
+                  <button type="button" onClick={addCameraKeyframe}><Plus size={15} />添加当前镜头</button>
                 </div>
-                <small>Yaw {Math.round(draftView.yaw)}° · Pitch {Math.round(draftView.pitch)}° · FOV {Math.round(draftView.fov || 70)}°</small>
+                <label className="roaming-zoom-control">
+                  镜头拉近 {Math.round(fovToZoom(draftView.fov || 70))}%
+                  <input type="range" min="80" max="230" value={Math.round(fovToZoom(draftView.fov || 70))} onChange={(event) => setDraftView((view) => ({ ...view, fov: zoomToFov(event.target.value) }))} />
+                </label>
+                <small>Yaw {Math.round(draftView.yaw)}° · Pitch {Math.round(draftView.pitch)}° · 拉近 {Math.round(fovToZoom(draftView.fov || 70))}%</small>
               </div>
               <div className="roaming-keyframe-list">
                 {selectedStop.cameraKeyframes.map((keyframe, index) => (
@@ -325,7 +370,7 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
                     <label>时间<input type="number" min="0" max={selectedStop.duration} step="0.1" value={keyframe.time} onChange={(event) => patchCameraKeyframe(keyframe.id, { time: Math.max(0, Math.min(selectedStop.duration, Number(event.target.value) || 0)) })} /></label>
                     <label>Yaw<input type="number" min="-180" max="180" value={Math.round(keyframe.yaw)} onChange={(event) => patchCameraKeyframe(keyframe.id, { yaw: Number(event.target.value) || 0 })} /></label>
                     <label>Pitch<input type="number" min="-78" max="78" value={Math.round(keyframe.pitch)} onChange={(event) => patchCameraKeyframe(keyframe.id, { pitch: Number(event.target.value) || 0 })} /></label>
-                    <label>FOV<input type="number" min="38" max="88" value={Math.round(keyframe.fov || 70)} onChange={(event) => patchCameraKeyframe(keyframe.id, { fov: Math.max(38, Math.min(88, Number(event.target.value) || 70)) })} /></label>
+                    <label>拉近%<input type="number" min="80" max="230" value={Math.round(keyframe.zoom || fovToZoom(keyframe.fov || 70))} onChange={(event) => { const zoom = Math.max(80, Math.min(230, Number(event.target.value) || 100)); patchCameraKeyframe(keyframe.id, { zoom, fov: zoomToFov(zoom) }); }} /></label>
                     <button type="button" onClick={() => deleteCameraKeyframe(keyframe.id)} disabled={selectedStop.cameraKeyframes.length <= 1} title="删除关键帧"><Trash2 size={14} /></button>
                   </div>
                 ))}
@@ -355,31 +400,41 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
             <section className="roaming-clip-inspector">
               <div className="roaming-subheading"><Upload size={16} /><strong>导游片段</strong></div>
               <div className="roaming-inline-fields">
-                <label>开始<input type="number" min="0" max={selectedStop.duration} step="0.1" value={selectedGuideClip.start} onChange={(event) => patchGuideClip(selectedGuideClip.id, { start: Number(event.target.value) || 0 })} /></label>
-                <label>时长<input type="number" min="0.5" max={selectedStop.duration} step="0.1" value={selectedGuideClip.duration} onChange={(event) => patchGuideClip(selectedGuideClip.id, { duration: Number(event.target.value) || 0.5 })} /></label>
+                <label>独立开始<input type="number" min="0" max={Math.max(0, selectedStop.duration - 0.5)} step="0.1" value={selectedGuideClip.start} onChange={(event) => patchGuideClip(selectedGuideClip.id, { start: Math.max(0, Math.min(selectedStop.duration - 0.5, Number(event.target.value) || 0)) })} /></label>
+                <label>独立时长<input type="number" min="0.5" max={Math.max(0.5, selectedStop.duration - selectedGuideClip.start)} step="0.1" value={selectedGuideClip.duration} onChange={(event) => patchGuideClip(selectedGuideClip.id, { duration: Math.max(0.5, Math.min(selectedStop.duration - selectedGuideClip.start, Number(event.target.value) || 0.5)) })} /></label>
               </div>
               <GuidePositionFields label="电脑端" value={selectedGuideClip.desktop} onChange={(desktop) => patchGuideClip(selectedGuideClip.id, { desktop })} />
               <GuidePositionFields label="手机端" value={selectedGuideClip.mobile} onChange={(mobile) => patchGuideClip(selectedGuideClip.id, { mobile })} />
               <button className="roaming-clip-delete" type="button" onClick={() => deleteGuideClip(selectedGuideClip.id)}><Trash2 size={14} />删除导游片段</button>
             </section>
           ) : null}
-          <section className="roaming-text-tools">
-            <button type="button" onClick={addText} disabled={!selectedStop}><MessageSquareText size={15} />添加自定义文字</button>
+          <section className="roaming-track-upload-tools">
+            <label className={!selectedStop ? 'is-disabled' : ''}><FileAudio size={15} />添加解说音频<input type="file" accept="audio/*" hidden disabled={!selectedStop} onChange={(event) => { const file = event.target.files?.[0]; if (file) addNarration(file); event.target.value = ''; }} /></label>
+            <label className={!selectedStop ? 'is-disabled' : ''}><Images size={15} />插入图片<input type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" hidden disabled={!selectedStop} onChange={(event) => { const file = event.target.files?.[0]; if (file) addImage(file); event.target.value = ''; }} /></label>
           </section>
-          {selectedTextClip ? (
+          {selectedNarrationClip ? (
             <section className="roaming-clip-inspector">
-              <div className="roaming-subheading"><MessageSquareText size={16} /><strong>文字片段</strong></div>
-              <label>文字内容<textarea value={selectedTextClip.text} onChange={(event) => patchTextClip(selectedTextClip.id, { text: event.target.value })} /></label>
+              <div className="roaming-subheading"><FileAudio size={16} /><strong>解说片段</strong></div>
+              <label>音频文件<input value={selectedNarrationClip.name} readOnly /></label>
               <div className="roaming-inline-fields">
-                <label>开始<input type="number" min="0" max={selectedStop.duration} step="0.1" value={selectedTextClip.start} onChange={(event) => patchTextClip(selectedTextClip.id, { start: Number(event.target.value) || 0 })} /></label>
-                <label>时长<input type="number" min="0.5" max={selectedStop.duration} step="0.1" value={selectedTextClip.duration} onChange={(event) => patchTextClip(selectedTextClip.id, { duration: Number(event.target.value) || 0.5 })} /></label>
+                <label>开始<input type="number" min="0" max={Math.max(0, selectedStop.duration - 0.5)} step="0.1" value={selectedNarrationClip.start} onChange={(event) => patchNarrationClip(selectedNarrationClip.id, { start: Math.max(0, Math.min(selectedStop.duration - 0.5, Number(event.target.value) || 0)) })} /></label>
+                <label>时长<input type="number" min="0.5" max={Math.max(0.5, selectedStop.duration - selectedNarrationClip.start)} step="0.1" value={selectedNarrationClip.duration} onChange={(event) => patchNarrationClip(selectedNarrationClip.id, { duration: Math.max(0.5, Math.min(selectedStop.duration - selectedNarrationClip.start, Number(event.target.value) || 0.5)) })} /></label>
               </div>
+              <label>音频起点<input type="number" min="0" step="0.1" value={selectedNarrationClip.trimStart || 0} onChange={(event) => patchNarrationClip(selectedNarrationClip.id, { trimStart: Math.max(0, Number(event.target.value) || 0) })} /></label>
+              <button className="roaming-clip-delete" type="button" onClick={() => deleteNarrationClip(selectedNarrationClip.id)}><Trash2 size={14} />删除解说片段</button>
+            </section>
+          ) : null}
+          {selectedImageClip ? (
+            <section className="roaming-clip-inspector">
+              <div className="roaming-subheading"><Images size={16} /><strong>图片片段</strong></div>
+              <label>图片文件<input value={selectedImageClip.name} readOnly /></label>
               <div className="roaming-inline-fields">
-                <label>位置<select value={selectedTextClip.position} onChange={(event) => patchTextClip(selectedTextClip.id, { position: event.target.value })}><option value="top">顶部</option><option value="center">居中</option><option value="bottom">底部</option></select></label>
-                <label>背景<select value={selectedTextClip.theme} onChange={(event) => patchTextClip(selectedTextClip.id, { theme: event.target.value })}><option value="dark">深色</option><option value="light">浅色</option><option value="none">无背景</option></select></label>
+                <label>开始<input type="number" min="0" max={Math.max(0, selectedStop.duration - 0.5)} step="0.1" value={selectedImageClip.start} onChange={(event) => patchImageClip(selectedImageClip.id, { start: Math.max(0, Math.min(selectedStop.duration - 0.5, Number(event.target.value) || 0)) })} /></label>
+                <label>时长<input type="number" min="0.5" max={Math.max(0.5, selectedStop.duration - selectedImageClip.start)} step="0.1" value={selectedImageClip.duration} onChange={(event) => patchImageClip(selectedImageClip.id, { duration: Math.max(0.5, Math.min(selectedStop.duration - selectedImageClip.start, Number(event.target.value) || 0.5)) })} /></label>
               </div>
-              <label>字号 {selectedTextClip.fontSize}px<input type="range" min="14" max="42" value={selectedTextClip.fontSize} onChange={(event) => patchTextClip(selectedTextClip.id, { fontSize: Number(event.target.value) })} /></label>
-              <button className="roaming-clip-delete" type="button" onClick={() => deleteTextClip(selectedTextClip.id)}><Trash2 size={14} />删除文字片段</button>
+              <ImagePositionFields label="电脑端" value={selectedImageClip.desktop} onChange={(desktop) => patchImageClip(selectedImageClip.id, { desktop })} />
+              <ImagePositionFields label="手机端" value={selectedImageClip.mobile} onChange={(mobile) => patchImageClip(selectedImageClip.id, { mobile })} />
+              <button className="roaming-clip-delete" type="button" onClick={() => deleteImageClip(selectedImageClip.id)}><Trash2 size={14} />删除图片片段</button>
             </section>
           ) : null}
           <button className="roaming-delete-route" type="button" onClick={deleteRoute} disabled={config.routes.length <= 1}><Trash2 size={16} />删除当前路线</button>
@@ -408,7 +463,7 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
                   key={keyframe.id}
                   style={{ left: `${Math.max(2, Math.min(98, (keyframe.time / stop.duration) * 100))}%` }}
                   title={`${keyframe.time}秒 · Yaw ${Math.round(keyframe.yaw)}°`}
-                  onClick={() => { setSelectedStopId(stop.id); setKeyframeTime(keyframe.time); }}
+                  onClick={() => { setSelectedStopId(stop.id); setKeyframeTime(keyframe.time); setDraftView({ yaw: keyframe.yaw, pitch: keyframe.pitch, fov: keyframe.fov || 70 }); }}
                 />
               ))}
             </div>
@@ -423,7 +478,7 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
                   className={`roaming-action-clip ${selectedGuideClipId === clip.id ? 'is-active' : ''}`}
                   key={clip.id}
                   style={{ left: `${(clip.start / stop.duration) * 100}%`, width: `${Math.max(14, (clip.duration / stop.duration) * 100)}%` }}
-                  onClick={() => { setSelectedStopId(stop.id); setSelectedGuideClipId(clip.id); setSelectedTextClipId(''); }}
+                  onClick={() => { setSelectedStopId(stop.id); setSelectedGuideClipId(clip.id); setSelectedNarrationClipId(''); setSelectedImageClipId(''); }}
                 >
                   {GUIDE_ACTIONS.find((action) => action.id === clip.action)?.label || '动作'}
                 </button>
@@ -431,18 +486,35 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
             </div>
           )) : <div className="roaming-track-placeholder">先添加场景片段</div>}
         </TimelineRow>
-        <TimelineRow label="文字轨道" icon={<MessageSquareText size={16} />}>
+        <TimelineRow label="解说轨道" icon={<FileAudio size={16} />}>
           {activeRoute.stops.length ? activeRoute.stops.map((stop) => (
             <div className="roaming-overlay-track" key={stop.id} style={{ width: `${Math.max(110, stop.duration * 18)}px` }}>
-              {stop.textClips.map((clip) => (
+              {stop.narrationClips.map((clip) => (
                 <button
                   type="button"
-                  className={`roaming-text-clip ${selectedTextClipId === clip.id ? 'is-active' : ''}`}
+                  className={`roaming-narration-clip ${selectedNarrationClipId === clip.id ? 'is-active' : ''}`}
                   key={clip.id}
                   style={{ left: `${(clip.start / stop.duration) * 100}%`, width: `${Math.max(14, (clip.duration / stop.duration) * 100)}%` }}
-                  onClick={() => { setSelectedStopId(stop.id); setSelectedTextClipId(clip.id); setSelectedGuideClipId(''); }}
+                  onClick={() => { setSelectedStopId(stop.id); setSelectedNarrationClipId(clip.id); setSelectedGuideClipId(''); setSelectedImageClipId(''); }}
                 >
-                  {clip.text}
+                  {clip.name}
+                </button>
+              ))}
+            </div>
+          )) : <div className="roaming-track-placeholder">先添加场景片段</div>}
+        </TimelineRow>
+        <TimelineRow label="图片轨道" icon={<Images size={16} />}>
+          {activeRoute.stops.length ? activeRoute.stops.map((stop) => (
+            <div className="roaming-overlay-track" key={stop.id} style={{ width: `${Math.max(110, stop.duration * 18)}px` }}>
+              {stop.imageClips.map((clip) => (
+                <button
+                  type="button"
+                  className={`roaming-image-clip ${selectedImageClipId === clip.id ? 'is-active' : ''}`}
+                  key={clip.id}
+                  style={{ left: `${(clip.start / stop.duration) * 100}%`, width: `${Math.max(14, (clip.duration / stop.duration) * 100)}%` }}
+                  onClick={() => { setSelectedStopId(stop.id); setSelectedImageClipId(clip.id); setSelectedGuideClipId(''); setSelectedNarrationClipId(''); }}
+                >
+                  {clip.name}
                 </button>
               ))}
             </div>
@@ -468,6 +540,18 @@ function GuidePositionFields({ label, value, onChange }) {
       <label>终点Y<input type="number" min="0" max="100" value={value.endY} onChange={(event) => field('endY', event.target.value)} /></label>
       <label>大小<input type="number" min="8" max="34" value={value.size} onChange={(event) => field('size', event.target.value)} /></label>
       <label>倾斜<input type="number" min="-45" max="45" value={value.tilt} onChange={(event) => field('tilt', event.target.value)} /></label>
+    </fieldset>
+  );
+}
+
+function ImagePositionFields({ label, value, onChange }) {
+  const field = (key, next) => onChange({ ...value, [key]: Number(next) || 0 });
+  return (
+    <fieldset className="roaming-position-fields roaming-image-position-fields">
+      <legend>{label}</legend>
+      <label>X<input type="number" min="0" max="100" value={value.x} onChange={(event) => field('x', event.target.value)} /></label>
+      <label>Y<input type="number" min="0" max="100" value={value.y} onChange={(event) => field('y', event.target.value)} /></label>
+      <label>大小<input type="number" min="8" max="90" value={value.size} onChange={(event) => field('size', event.target.value)} /></label>
     </fieldset>
   );
 }

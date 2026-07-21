@@ -25,7 +25,7 @@
   <div class="roaming-actions"><button id="roamingPrev" type="button" title="上一个场景">‹</button><button id="roamingPause" type="button">暂停漫游</button><button id="roamingNext" type="button" title="下一个场景">›</button><button id="roamingExit" type="button" title="退出漫游">×</button></div>
 </section>
 <img class="roaming-guide-overlay" id="roamingGuide" alt="" />
-<div class="roaming-text-overlay" id="roamingText"></div>
+<img class="roaming-image-overlay" id="roamingImage" alt="" />
 <aside class="floating-map"><h2 id="mapTitle"></h2><div class="map-card" id="mapCard"></div></aside>
 <section class="bottom-dock">
   <div class="scene-info"><h1 id="title"></h1><p id="desc"></p></div>
@@ -37,6 +37,7 @@
 <div class="quick-modal" id="quickModal"><div class="quick-panel"><button class="quick-close" id="quickClose">关闭</button><h2 id="quickTitle"></h2><main class="quick-stage" id="quickStage"></main></div></div>
 <audio id="bgMusic" src="./assets/audio/background.mp3" preload="auto" loop autoplay playsinline></audio>
 <audio id="roamingMusic" preload="auto" loop playsinline></audio>
+<audio id="roamingNarration" preload="auto" playsinline></audio>
 <button class="music-control" id="musicControl" type="button">播放音乐</button>
 <script type="module" src="./assets/tour.js"></script>
 </body>
