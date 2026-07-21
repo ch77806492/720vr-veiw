@@ -11342,7 +11342,7 @@
   ],
   "roaming": {
     "version": 2,
-    "enabled": true,
+    "enabled": false,
     "activeRouteId": "roaming-route-1784543953148-1",
     "music": {
       "name": "",
