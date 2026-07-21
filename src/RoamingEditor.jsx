@@ -87,6 +87,11 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
     setSelectedStopId(playback.stop.id);
   }, [isPlaying, playback.stop, selectedStopId]);
 
+  useEffect(() => {
+    if (!isPlaying || !playback.stop || playback.stop.id !== selectedStopId) return;
+    setKeyframeTime(Number(playback.localTime.toFixed(1)));
+  }, [isPlaying, playback.stop, playback.localTime, selectedStopId]);
+
   const patchConfig = (patch) => onChange({ ...config, ...patch, enabled: true });
   const patchRoute = (routeId, patch) => {
     patchConfig({ routes: config.routes.map((route) => (route.id === routeId ? { ...route, ...patch } : route)) });
@@ -124,7 +129,8 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
   };
   const addCameraKeyframe = () => {
     if (!selectedStop) return;
-    const time = Math.max(0, Math.min(selectedStop.duration, Number(keyframeTime) || 0));
+    const currentTime = isPlaying && playback.stop?.id === selectedStop.id ? playback.localTime : keyframeTime;
+    const time = Number(Math.max(0, Math.min(selectedStop.duration, Number(currentTime) || 0)).toFixed(1));
     const keyframe = {
       id: `camera-${selectedStop.id}-${Date.now()}`,
       time,
@@ -136,6 +142,9 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
     patchStop(selectedStop.id, {
       cameraKeyframes: [...selectedStop.cameraKeyframes, keyframe].sort((a, b) => a.time - b.time),
     });
+    setIsPlaying(false);
+    setKeyframeTime(time);
+    setPlayhead(stopStartTime(activeRoute, selectedStop.id) + time);
   };
   const patchCameraKeyframe = (keyframeId, patch) => {
     patchStop(selectedStop.id, {
@@ -284,6 +293,7 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
                 initialYaw={previewView.yaw ?? previewScene.initialYaw ?? -24}
                 initialPitch={previewView.pitch ?? previewScene.initialPitch ?? 1}
                 viewFov={previewView.fov || 70}
+                controlledView={isPlaying}
                 imageRoll={previewScene.imageRoll || 0}
                 onViewChange={(view) => {
                   if (!isPlaying) setDraftView({ yaw: view.yaw, pitch: view.pitch, fov: view.fov || 70 });
@@ -328,7 +338,13 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
               className="roaming-scrubber"
               onClick={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
-                setPlayhead(routeDuration * Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)));
+                const nextPlayhead = routeDuration * Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+                const located = locatePlayback(activeRoute, nextPlayhead);
+                setPlayhead(nextPlayhead);
+                if (located.stop) {
+                  setSelectedStopId(located.stop.id);
+                  setKeyframeTime(Number(located.localTime.toFixed(1)));
+                }
               }}
             >
               <span style={{ width: `${routeDuration ? (playhead / routeDuration) * 100 : 0}%` }} />
@@ -447,7 +463,7 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
           {activeRoute.stops.map((stop) => {
             const scene = scenes.find((item) => item.id === stop.sceneId);
             return (
-              <button className={`roaming-scene-clip ${selectedStop?.id === stop.id ? 'is-active' : ''}`} style={{ width: `${Math.max(110, stop.duration * 18)}px` }} type="button" key={stop.id} onClick={() => setSelectedStopId(stop.id)}>
+              <button className={`roaming-scene-clip ${selectedStop?.id === stop.id ? 'is-active' : ''}`} style={{ width: `${Math.max(110, stop.duration * 18)}px` }} type="button" key={stop.id} onClick={() => { setSelectedStopId(stop.id); setKeyframeTime(0); setPlayhead(stopStartTime(activeRoute, stop.id)); }}>
                 <span style={{ backgroundImage: `url(${scene?.thumbnailUrl || scene?.imageUrl || ''})` }} /><strong>{scene?.name || '场景已删除'}</strong><small>{stop.duration}秒</small>
                 <i onClick={(event) => { event.stopPropagation(); removeStop(stop.id); }}><Trash2 size={13} /></i>
               </button>
@@ -457,14 +473,20 @@ export default function RoamingEditor({ config, scenes, onChange, onBack, onSave
         <TimelineRow label="镜头轨道" icon={<Camera size={16} />}>
           {activeRoute.stops.length ? activeRoute.stops.map((stop) => (
             <div className="roaming-camera-clip" key={stop.id} style={{ width: `${Math.max(110, stop.duration * 18)}px` }}>
-              {stop.cameraKeyframes.map((keyframe) => (
+              {stop.cameraKeyframes.map((keyframe, index) => (
                 <button
                   type="button"
                   key={keyframe.id}
-                  style={{ left: `${Math.max(2, Math.min(98, (keyframe.time / stop.duration) * 100))}%` }}
+                  style={{ left: `${Math.max(3, Math.min(97, (keyframe.time / stop.duration) * 100))}%`, top: `${12 + (index % 3) * 12}px`, marginLeft: `${(index % 3) * 5}px` }}
                   title={`${keyframe.time}秒 · Yaw ${Math.round(keyframe.yaw)}°`}
-                  onClick={() => { setSelectedStopId(stop.id); setKeyframeTime(keyframe.time); setDraftView({ yaw: keyframe.yaw, pitch: keyframe.pitch, fov: keyframe.fov || 70 }); }}
-                />
+                  onClick={() => {
+                    setIsPlaying(false);
+                    setSelectedStopId(stop.id);
+                    setKeyframeTime(keyframe.time);
+                    setPlayhead(stopStartTime(activeRoute, stop.id) + keyframe.time);
+                    setDraftView({ yaw: keyframe.yaw, pitch: keyframe.pitch, fov: keyframe.fov || 70 });
+                  }}
+                >{index + 1}</button>
               ))}
             </div>
           )) : <div className="roaming-track-placeholder">选择场景片段后添加视角关键帧</div>}
@@ -565,6 +587,15 @@ function locatePlayback(route, time) {
   }
   const stop = route?.stops?.[route.stops.length - 1];
   return { stop, localTime: Number(stop?.duration || 0), start: Math.max(0, cursor - Number(stop?.duration || 0)) };
+}
+
+function stopStartTime(route, stopId) {
+  let cursor = 0;
+  for (const stop of route?.stops || []) {
+    if (stop.id === stopId) return cursor;
+    cursor += Number(stop.duration || 0);
+  }
+  return 0;
 }
 
 function interpolateCamera(stop, localTime, fallback) {

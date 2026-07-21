@@ -23,6 +23,7 @@ export default function PanoramaViewer({
   initialYaw = -24,
   initialPitch = 1,
   viewFov = 70,
+  controlledView = false,
   imageRoll = 0,
 }) {
   const mountRef = useRef(null);
@@ -50,18 +51,21 @@ export default function PanoramaViewer({
     targetLat: initialPitch,
     yaw: 0,
     pitch: 0,
+    imageUrl,
   });
 
   callbacksRef.current = { onSelectHotspot, onMoveHotspot, onSelectVideo, onMoveVideo, onSelectAnimatedSpot, onMoveAnimatedSpot, onViewChange };
   editModeRef.current = editMode;
 
   useEffect(() => {
-    dragRef.current.lon = initialYaw;
+    const imageChanged = dragRef.current.imageUrl !== imageUrl;
+    if (controlledView || imageChanged) dragRef.current.lon = initialYaw;
     dragRef.current.targetLon = initialYaw;
-    dragRef.current.lat = initialPitch;
+    if (controlledView || imageChanged) dragRef.current.lat = initialPitch;
     dragRef.current.targetLat = initialPitch;
-    callbacksRef.current.onViewChange?.({ yaw: initialYaw, pitch: initialPitch, fov: viewFov });
-  }, [imageUrl, initialYaw, initialPitch, viewFov]);
+    dragRef.current.imageUrl = imageUrl;
+    if (!controlledView) callbacksRef.current.onViewChange?.({ yaw: initialYaw, pitch: initialPitch, fov: viewFov });
+  }, [imageUrl, initialYaw, initialPitch, viewFov, controlledView]);
 
   useEffect(() => {
     if (!cameraRef.current) return;

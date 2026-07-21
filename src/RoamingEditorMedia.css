@@ -85,3 +85,16 @@
 .roaming-image-clip.is-active {
   box-shadow: inset 0 0 0 1px currentColor, 0 0 0 1px #fff;
 }
+
+.roaming-camera-clip button {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+}

@@ -1,6 +1,6 @@
 {
   "projectName": "泰安中公学习基地360全景展示",
-  "generatedAt": "2026-07-21T00:55:00.060Z",
+  "generatedAt": "2026-07-21T01:15:34.135Z",
   "activeSceneId": "outdoor-gate",
   "groups": [
     {
@@ -11401,20 +11401,28 @@
             "transitionDuration": 1.2,
             "cameraKeyframes": [
               {
-                "id": "camera-outdoor-gate-1784544200407",
+                "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784595942250",
                 "time": 0,
-                "yaw": 101.32,
-                "pitch": 2.92,
+                "yaw": -78.12,
+                "pitch": 12.28,
                 "fov": 70,
                 "zoom": 100
               },
               {
-                "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784544628350",
+                "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784595957761",
                 "time": 0,
-                "yaw": -24,
-                "pitch": 1,
+                "yaw": -252.48,
+                "pitch": 13,
                 "fov": 70,
                 "zoom": 100
+              },
+              {
+                "id": "camera-roaming-stop-outdoor-gate-1784544200407-0-1784595971264",
+                "time": 0,
+                "yaw": -260.04,
+                "pitch": 15.4,
+                "fov": 46.05263157894737,
+                "zoom": 152
               }
             ],
             "guideClips": [],
