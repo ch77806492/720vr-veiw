@@ -1,1 +1,1 @@
-Open index.html or visit http://localhost:5173/tour-output/index.html to browse the generated school 360 tour.
+Open index.html for the standard tour or roaming.html for the guided roaming page.

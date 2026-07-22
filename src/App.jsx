@@ -699,13 +699,15 @@ const writePublishedFolder = async (directoryHandle, packageFiles) => {
   const data = await root.getDirectoryHandle('data', { create: true });
   const assets = await root.getDirectoryHandle('assets', { create: true });
   await writeFileToDirectory(root, 'index.html', packageFiles.html);
+  await writeFileToDirectory(root, 'roaming.html', packageFiles.roamingHtml);
   await writeFileToDirectory(assets, 'tour.css', packageFiles.css);
   await writeFileToDirectory(assets, 'tour.js', packageFiles.js);
+  await writeFileToDirectory(assets, 'roaming.js', packageFiles.roamingJs);
   await writeFileToDirectory(data, 'project.json', packageFiles.projectJson);
   await writeFileToDirectory(
     root,
     'README.txt',
-    'Open index.html to browse the generated school 360 tour. data/project.json contains the saved scenes, floor maps, positions, hotspots, video spots and panorama image data.',
+    'Open index.html for the standard tour or roaming.html for the guided roaming page. data/project.json contains the saved scenes and tour configuration.',
   );
 };
 
@@ -2631,17 +2633,33 @@ function createStandalonePackage(project) {
 
   const inlineHtml = createStandaloneHtml(projectForFiles);
   const css = inlineHtml.match(/<style>([\s\S]*?)<\/style>/)?.[1]?.trim() || '';
-  const js = inlineHtml.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]?.trim() || '';
-  const html = inlineHtml
+  const roamingJs = (inlineHtml.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]?.trim() || '')
+    .replaceAll('/*__ROAMING_END__*/', '');
+  const js = (inlineHtml.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]?.trim() || '')
+    .replace(
+      /const roamingPage=[\s\S]*?\/\*__ROAMING_END__\*\//,
+      'const roamingState={active:false};function pauseRoaming(){}function tickRoaming(){}',
+    );
+  const sharedHtml = inlineHtml
     .replace(/<style>[\s\S]*?<\/style>/, '<link rel="stylesheet" href="./assets/tour.css" />')
     .replace(/<script type="module">[\s\S]*?<\/script>/, '<script type="module" src="./assets/tour.js"></script>');
+  const html = sharedHtml
+    .replace(/<button class="roaming-control"[\s\S]*?<\/button>/, '')
+    .replace(/<section class="roaming-player"[\s\S]*?<\/section>/, '')
+    .replace(/<img class="roaming-(?:guide|image)-overlay"[^>]*\/>/g, '')
+    .replace(/<audio id="roaming(?:Music|Narration)"[^>]*><\/audio>/g, '');
+  const roamingHtml = sharedHtml
+    .replace('./assets/tour.js', './assets/roaming.js')
+    .replace('</head>', '<script>window.__ROAMING_PAGE__=true;</script>\n</head>');
   const previewHtml = html.replace('<head>\n', '<head>\n<base href="/tour-output/" />\n');
 
   return {
     html,
+    roamingHtml,
     previewHtml,
     css,
     js,
+    roamingJs,
     projectJson: JSON.stringify(projectForFiles, null, 2),
     assets,
   };
@@ -2675,7 +2693,7 @@ function createTourHtml(projectExpression) {
 <main class="tour-stage" id="stage"></main>
 <div class="transition-snapshot" id="transitionSnapshot"></div>
 <div class="markers" id="markers"></div>
-<aside class="tour-title" id="tourTitle"><h1 id="title"></h1><p id="desc"></p></aside>
+<aside class="tour-title"><h1 id="title"></h1><p id="desc"></p></aside>
 <aside class="quick-entry" id="quickEntry"></aside>
 <button class="quick-toggle" id="quickToggle" type="button">快捷场景</button>
 <button class="map-toggle" id="mapToggle" type="button">平面图</button>
@@ -2686,9 +2704,6 @@ function createTourHtml(projectExpression) {
   <div class="roaming-progress"><span id="roamingProgress"></span></div>
   <div class="roaming-status"><span id="roamingStatus">准备开始</span><span id="roamingTime">00:00 / 00:00</span></div>
   <div class="roaming-actions"><button id="roamingPrev" type="button" title="上一个场景">‹</button><button id="roamingPause" type="button">暂停漫游</button><button id="roamingNext" type="button" title="下一个场景">›</button><button id="roamingExit" type="button" title="退出漫游">×</button></div>
-</section>
-<section class="roaming-entry-dialog" id="roamingEntryDialog" role="dialog" aria-modal="true" aria-labelledby="roamingEntryTitle">
-  <div class="roaming-entry-panel"><h2 id="roamingEntryTitle">是否进入漫游？</h2><p>即将开始校园自动漫游。</p><div class="roaming-entry-actions"><button id="roamingEntryCancel" type="button">取消</button><button class="primary" id="roamingEntryConfirm" type="button">确定进入</button></div></div>
 </section>
 <img class="roaming-guide-overlay" id="roamingGuide" alt="" />
 <img class="roaming-image-overlay" id="roamingImage" alt="" />
@@ -2811,7 +2826,7 @@ function closeVideo(){const modal=document.getElementById('videoModal');modal.cl
 function closeScenePicker(){document.getElementById('scenePicker').classList.remove('open');document.querySelector('.bottom-dock').classList.remove('is-open')}
 let scenePickerCloseTimer;function scheduleScenePickerClose(){clearTimeout(scenePickerCloseTimer);scenePickerCloseTimer=setTimeout(function(){const dock=document.querySelector('.bottom-dock'),picker=document.getElementById('scenePicker');if(!dock.matches(':hover')&&!picker.matches(':hover'))closeScenePicker()},120)}function cancelScenePickerClose(){clearTimeout(scenePickerCloseTimer)}
 const bgMusic=document.getElementById('bgMusic'),musicControl=document.getElementById('musicControl');function setMusicButton(show,text){if(!musicControl)return;musicControl.textContent=text||'播放音乐';musicControl.classList.toggle('show',!!show)}function syncMusicButton(){setMusicButton(window.innerWidth<860||bgMusic.paused,bgMusic.paused?'播放音乐':'暂停音乐')}function playBackgroundMusic(){if(!bgMusic)return;bgMusic.volume=.36;bgMusic.muted=false;const result=bgMusic.play();if(result&&result.then)result.then(syncMusicButton).catch(function(){setMusicButton(true,'播放音乐')});else syncMusicButton()}function toggleBackgroundMusic(){if(bgMusic.paused)playBackgroundMusic();else{bgMusic.pause();syncMusicButton()}}function unlockBackgroundMusic(){playBackgroundMusic();window.removeEventListener('pointerdown',unlockBackgroundMusic);window.removeEventListener('keydown',unlockBackgroundMusic);window.removeEventListener('touchstart',unlockBackgroundMusic)}bgMusic.addEventListener('play',syncMusicButton);bgMusic.addEventListener('pause',syncMusicButton);window.addEventListener('pointerdown',unlockBackgroundMusic,{once:true});window.addEventListener('keydown',unlockBackgroundMusic,{once:true});window.addEventListener('touchstart',unlockBackgroundMusic,{once:true,passive:true});setMusicButton(window.innerWidth<860,'播放音乐');setTimeout(playBackgroundMusic,480);
-const roamingConfig=project.roaming||{},roamingRoutes=(roamingConfig.routes||[]).filter(function(route){return (route.stops||[]).length}),roamingControl=document.getElementById('roamingControl'),roamingPlayer=document.getElementById('roamingPlayer'),roamingRouteName=document.getElementById('roamingRouteName'),roamingRouteSelect=document.getElementById('roamingRouteSelect'),roamingProgress=document.getElementById('roamingProgress'),roamingStatus=document.getElementById('roamingStatus'),roamingTime=document.getElementById('roamingTime'),roamingPause=document.getElementById('roamingPause'),roamingPrev=document.getElementById('roamingPrev'),roamingNext=document.getElementById('roamingNext'),roamingExit=document.getElementById('roamingExit'),roamingGuide=document.getElementById('roamingGuide'),roamingImage=document.getElementById('roamingImage'),roamingMusic=document.getElementById('roamingMusic'),roamingNarration=document.getElementById('roamingNarration'),roamingEntryDialog=document.getElementById('roamingEntryDialog'),roamingEntryConfirm=document.getElementById('roamingEntryConfirm'),roamingEntryCancel=document.getElementById('roamingEntryCancel'),tourTitle=document.getElementById('tourTitle');
+const roamingPage=window.__ROAMING_PAGE__===true,roamingConfig=project.roaming||{},roamingRoutes=(roamingConfig.routes||[]).filter(function(route){return (route.stops||[]).length}),roamingControl=document.getElementById('roamingControl'),roamingPlayer=document.getElementById('roamingPlayer'),roamingRouteName=document.getElementById('roamingRouteName'),roamingRouteSelect=document.getElementById('roamingRouteSelect'),roamingProgress=document.getElementById('roamingProgress'),roamingStatus=document.getElementById('roamingStatus'),roamingTime=document.getElementById('roamingTime'),roamingPause=document.getElementById('roamingPause'),roamingPrev=document.getElementById('roamingPrev'),roamingNext=document.getElementById('roamingNext'),roamingExit=document.getElementById('roamingExit'),roamingGuide=document.getElementById('roamingGuide'),roamingImage=document.getElementById('roamingImage'),roamingMusic=document.getElementById('roamingMusic'),roamingNarration=document.getElementById('roamingNarration');
 const roamingState={active:false,paused:false,route:null,stopIndex:0,elapsed:0,lastFrame:0,resumeBackground:false,guideKey:'',narrationKey:''};
 function formatRoamingTime(value){const seconds=Math.max(0,Math.round(Number(value)||0));return String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')}
 function routeDuration(route){return (route&&route.stops||[]).reduce(function(total,stop){return total+(Number(stop.duration)||0)},0)}
@@ -2828,15 +2843,12 @@ function interpolateRoamingCamera(keyframes,time){const frames=(keyframes||[]).s
 function applyRoamingFrame(){const route=roamingState.route,stop=route&&route.stops[roamingState.stopIndex];if(!stop)return;const view=interpolateRoamingCamera(stop.cameraKeyframes,roamingState.elapsed);if(view&&!roamingState.paused&&!isTransitioning){targetLon=Number(view.yaw)||0;targetLat=Math.max(-78,Math.min(78,Number(view.pitch)||0));camera.fov=Math.max(30,Math.min(88,Number(view.fov)||70));camera.updateProjectionMatrix()}renderRoamingGuide(stop,roamingState.elapsed);renderRoamingImage(stop,roamingState.elapsed);syncRoamingNarration(stop,roamingState.elapsed);updateRoamingControls()}
 function goToRoamingStop(index){const route=roamingState.route;if(!route||!route.stops[index])return;roamingState.stopIndex=index;roamingState.elapsed=0;roamingState.lastFrame=performance.now();const stop=route.stops[index],next=project.scenes.find(function(scene){return scene.id===stop.sceneId}),firstView=(stop.cameraKeyframes||[]).slice().sort(function(a,b){return Number(a.time)-Number(b.time)})[0]||{};if(next&&next.id!==activeScene.id&&!isTransitioning)transitionToScene(next,{duration:stop.transitionDuration,yaw:firstView.yaw,pitch:firstView.pitch,fov:firstView.fov});applyRoamingFrame()}
 function startRoaming(routeId){const route=roamingRoutes.find(function(item){return item.id===routeId})||roamingRoutes[0];if(!route)return;const resumeBackground=roamingState.active?roamingState.resumeBackground:!bgMusic.paused;if(roamingState.active)stopRoaming(false);roamingState.active=true;roamingState.paused=false;roamingState.route=route;roamingState.stopIndex=0;roamingState.elapsed=0;roamingState.lastFrame=performance.now();roamingState.resumeBackground=resumeBackground;bgMusic.pause();syncMusicButton();if(gyroEnabled)toggleGyroscope();document.body.classList.add('roaming-active');roamingPlayer.classList.add('open');roamingControl.textContent='暂停漫游';roamingRouteSelect.value=route.id;if(roamingConfig.music&&roamingConfig.music.url){roamingMusic.src=roamingConfig.music.url;const playResult=roamingMusic.play();if(playResult&&playResult.catch)playResult.catch(function(error){console.warn(error)})}goToRoamingStop(0);updateRoamingControls('漫游开始')}
-let secretEntryClickCount=0,secretEntryLastClick=0;
-function setRoamingEntryDialog(open){roamingEntryDialog.classList.toggle('open',!!open);if(open)setTimeout(function(){roamingEntryConfirm.focus()},0)}
-function registerSecretRoamingClick(){const entry=roamingConfig.secretEntry||{};if(!entry.enabled||!roamingRoutes.length||roamingState.active||isIntro||isTransitioning)return;const now=Date.now();secretEntryClickCount=now-secretEntryLastClick>4000?1:secretEntryClickCount+1;secretEntryLastClick=now;tourTitle.dataset.secretEntryClicks=String(secretEntryClickCount);if(secretEntryClickCount>=Math.max(2,Number(entry.clicks)||5)){secretEntryClickCount=0;tourTitle.dataset.secretEntryClicks='0';setRoamingEntryDialog(true)}}
 function pauseRoaming(message){if(!roamingState.active||roamingState.paused)return;roamingState.paused=true;roamingMusic.pause();roamingNarration.pause();roamingControl.textContent='继续漫游';applyRoamingFrame();updateRoamingControls(message||'漫游已暂停')}
 function resumeRoaming(){if(!roamingState.active||!roamingState.paused)return;roamingState.paused=false;roamingState.lastFrame=performance.now();if(roamingConfig.music&&roamingConfig.music.url){const playResult=roamingMusic.play();if(playResult&&playResult.catch)playResult.catch(function(error){console.warn(error)})}roamingControl.textContent='暂停漫游';updateRoamingControls('继续漫游')}
 function stopRoaming(restoreMusic){const shouldResume=roamingState.resumeBackground;roamingState.active=false;roamingState.paused=false;roamingMusic.pause();roamingMusic.currentTime=0;roamingNarration.pause();roamingNarration.currentTime=0;document.body.classList.remove('roaming-active');roamingPlayer.classList.remove('open');roamingControl.textContent='开始漫游';resetRoamingOverlays();if(restoreMusic!==false&&shouldResume)playBackgroundMusic()}
 function tickRoaming(){if(!roamingState.active)return;const now=performance.now();if(roamingState.paused||isIntro||isTransitioning){roamingState.lastFrame=now;applyRoamingFrame();return}const delta=Math.min(.1,Math.max(0,(now-roamingState.lastFrame)/1000));roamingState.lastFrame=now;roamingState.elapsed+=delta;const stop=roamingState.route.stops[roamingState.stopIndex];if(roamingState.elapsed>=Number(stop.duration||0)){if(roamingState.stopIndex<roamingState.route.stops.length-1)goToRoamingStop(roamingState.stopIndex+1);else{stopRoaming(true);return}}applyRoamingFrame()}
-roamingRouteSelect.innerHTML=roamingRoutes.map(function(route){return '<option value="'+esc(route.id)+'">'+esc(route.name)+'</option>'}).join('');roamingRouteSelect.value=roamingConfig.activeRouteId||roamingRoutes[0]&&roamingRoutes[0].id||'';if(roamingConfig.enabled&&roamingRoutes.length)roamingControl.classList.add('show');roamingControl.onclick=function(e){e.stopPropagation();if(!roamingState.active)startRoaming(roamingRouteSelect.value);else if(roamingState.paused)resumeRoaming();else pauseRoaming()};roamingPause.onclick=function(){if(roamingState.paused)resumeRoaming();else pauseRoaming()};roamingPrev.onclick=function(){goToRoamingStop(Math.max(0,roamingState.stopIndex-1))};roamingNext.onclick=function(){goToRoamingStop(Math.min(roamingState.route.stops.length-1,roamingState.stopIndex+1))};roamingExit.onclick=function(){stopRoaming(true)};roamingRouteSelect.onchange=function(){if(roamingState.active)startRoaming(this.value)};
-tourTitle.onclick=function(e){e.stopPropagation();registerSecretRoamingClick()};roamingEntryCancel.onclick=function(){setRoamingEntryDialog(false)};roamingEntryConfirm.onclick=function(){setRoamingEntryDialog(false);startRoaming(roamingRouteSelect.value)};roamingEntryDialog.onclick=function(e){if(e.target===roamingEntryDialog)setRoamingEntryDialog(false)};window.addEventListener('keydown',function(e){if(e.key==='Escape')setRoamingEntryDialog(false)});
+roamingRouteSelect.innerHTML=roamingRoutes.map(function(route){return '<option value="'+esc(route.id)+'">'+esc(route.name)+'</option>'}).join('');roamingRouteSelect.value=roamingConfig.activeRouteId||roamingRoutes[0]&&roamingRoutes[0].id||'';if(roamingPage&&roamingRoutes.length)roamingControl.classList.add('show');roamingControl.onclick=function(e){e.stopPropagation();if(!roamingState.active)startRoaming(roamingRouteSelect.value);else if(roamingState.paused)resumeRoaming();else pauseRoaming()};roamingPause.onclick=function(){if(roamingState.paused)resumeRoaming();else pauseRoaming()};roamingPrev.onclick=function(){goToRoamingStop(Math.max(0,roamingState.stopIndex-1))};roamingNext.onclick=function(){goToRoamingStop(Math.min(roamingState.route.stops.length-1,roamingState.stopIndex+1))};roamingExit.onclick=function(){stopRoaming(true)};roamingRouteSelect.onchange=function(){if(roamingState.active)startRoaming(this.value)};
+/*__ROAMING_END__*/
 document.getElementById('closeVideo').onclick=closeVideo;
 document.getElementById('quickClose').onclick=closeQuickScene;
 quickToggle.onclick=function(e){e.stopPropagation();const open=!document.body.classList.contains('quick-open');document.body.classList.toggle('quick-open',open);if(open)document.body.classList.remove('map-open')};

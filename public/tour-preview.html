@@ -13,23 +13,15 @@
 <main class="tour-stage" id="stage"></main>
 <div class="transition-snapshot" id="transitionSnapshot"></div>
 <div class="markers" id="markers"></div>
-<aside class="tour-title" id="tourTitle"><h1 id="title"></h1><p id="desc"></p></aside>
+<aside class="tour-title"><h1 id="title"></h1><p id="desc"></p></aside>
 <aside class="quick-entry" id="quickEntry"></aside>
 <button class="quick-toggle" id="quickToggle" type="button">快捷场景</button>
 <button class="map-toggle" id="mapToggle" type="button">平面图</button>
 <button class="gyro-control" id="gyroControl" type="button">开启陀螺仪</button>
-<button class="roaming-control" id="roamingControl" type="button">开始漫游</button>
-<section class="roaming-player" id="roamingPlayer" aria-label="漫游控制">
-  <div class="roaming-player-head"><strong id="roamingRouteName">校园漫游</strong><select id="roamingRouteSelect" aria-label="漫游路线"></select></div>
-  <div class="roaming-progress"><span id="roamingProgress"></span></div>
-  <div class="roaming-status"><span id="roamingStatus">准备开始</span><span id="roamingTime">00:00 / 00:00</span></div>
-  <div class="roaming-actions"><button id="roamingPrev" type="button" title="上一个场景">‹</button><button id="roamingPause" type="button">暂停漫游</button><button id="roamingNext" type="button" title="下一个场景">›</button><button id="roamingExit" type="button" title="退出漫游">×</button></div>
-</section>
-<section class="roaming-entry-dialog" id="roamingEntryDialog" role="dialog" aria-modal="true" aria-labelledby="roamingEntryTitle">
-  <div class="roaming-entry-panel"><h2 id="roamingEntryTitle">是否进入漫游？</h2><p>即将开始校园自动漫游。</p><div class="roaming-entry-actions"><button id="roamingEntryCancel" type="button">取消</button><button class="primary" id="roamingEntryConfirm" type="button">确定进入</button></div></div>
-</section>
-<img class="roaming-guide-overlay" id="roamingGuide" alt="" />
-<img class="roaming-image-overlay" id="roamingImage" alt="" />
+
+
+
+
 <aside class="floating-map"><h2 id="mapTitle"></h2><div class="map-card" id="mapCard"></div></aside>
 <section class="bottom-dock">
   <div class="scene-info"><h1 id="title"></h1><p id="desc"></p></div>
@@ -40,8 +32,8 @@
 <div class="video-modal" id="videoModal"><button id="closeVideo">关闭</button><div id="videoMount"></div></div>
 <div class="quick-modal" id="quickModal"><div class="quick-panel"><button class="quick-close" id="quickClose">关闭</button><h2 id="quickTitle"></h2><main class="quick-stage" id="quickStage"></main></div></div>
 <audio id="bgMusic" src="./assets/audio/background.mp3" preload="auto" loop autoplay playsinline></audio>
-<audio id="roamingMusic" preload="auto" loop playsinline></audio>
-<audio id="roamingNarration" preload="auto" playsinline></audio>
+
+
 <button class="music-control" id="musicControl" type="button">播放音乐</button>
 <script type="module" src="./assets/tour.js"></script>
 </body>

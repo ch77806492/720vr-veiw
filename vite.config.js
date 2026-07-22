@@ -313,10 +313,12 @@ function tourSourceWriterPlugin() {
           const outputFolder = path.basename(outputDir);
           const entries = new Set([
             `${outputFolder}/index.html`,
+            `${outputFolder}/roaming.html`,
             `${outputFolder}/README.txt`,
             `${outputFolder}/data`,
             `${outputFolder}/assets/tour.css`,
             `${outputFolder}/assets/tour.js`,
+            `${outputFolder}/assets/roaming.js`,
             `${outputFolder}/assets/maps`,
             `${outputFolder}/assets/thumbs`,
             `${outputFolder}/assets/planets`,
@@ -412,8 +414,10 @@ function tourSourceWriterPlugin() {
             ),
           );
           await fs.writeFile(path.join(outputDir, 'index.html'), payload.html || '', 'utf8');
+          await fs.writeFile(path.join(outputDir, 'roaming.html'), payload.roamingHtml || '', 'utf8');
           await fs.writeFile(path.join(outputDir, 'assets', 'tour.css'), payload.css || '', 'utf8');
           await fs.writeFile(path.join(outputDir, 'assets', 'tour.js'), payload.js || '', 'utf8');
+          await fs.writeFile(path.join(outputDir, 'assets', 'roaming.js'), payload.roamingJs || '', 'utf8');
           await fs.writeFile(path.join(outputDir, 'data', 'project.json'), payload.projectJson || '{}', 'utf8');
           if (payload.previewHtml) {
             await fs.mkdir(path.join(rootDir, 'public'), { recursive: true });
@@ -421,7 +425,7 @@ function tourSourceWriterPlugin() {
           }
           await fs.writeFile(
             path.join(outputDir, 'README.txt'),
-            'Open index.html or visit http://localhost:5173/tour-output/index.html to browse the generated school 360 tour.',
+            'Open index.html for the standard tour or roaming.html for the guided roaming page.',
             'utf8',
           );
           if (payload.openFolder !== false) {
@@ -430,6 +434,7 @@ function tourSourceWriterPlugin() {
           sendJson(res, 200, {
             outputPath: outputDir,
             url: '/tour-output/index.html',
+            roamingUrl: '/tour-output/roaming.html',
           });
         } catch (error) {
           sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
