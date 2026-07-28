@@ -3,6 +3,8 @@ import { gsap } from 'gsap';
 import * as THREE from 'three';
 import { createAnimatedTexture } from './animatedTexture.js';
 
+const normalizeYaw = (value) => THREE.MathUtils.euclideanModulo(value + 180, 360) - 180;
+
 export default function PanoramaViewer({
   imageUrl,
   krpanoTiles,
@@ -36,6 +38,7 @@ export default function PanoramaViewer({
   const animatedMeshesRef = useRef([]);
   const animatedGuideMeshesRef = useRef([]);
   const animatedControllersRef = useRef([]);
+  const pointerToSphericalRef = useRef(null);
   const editModeRef = useRef(editMode);
   const callbacksRef = useRef({ onSelectHotspot, onMoveHotspot, onSelectVideo, onMoveVideo, onSelectAnimatedSpot, onMoveAnimatedSpot, onViewChange });
   const dragRef = useRef({
@@ -51,6 +54,8 @@ export default function PanoramaViewer({
     targetLat: initialPitch,
     yaw: 0,
     pitch: 0,
+    yawOffset: 0,
+    pitchOffset: 0,
     imageUrl,
   });
 
@@ -85,7 +90,7 @@ export default function PanoramaViewer({
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(viewFov, mount.clientWidth / mount.clientHeight, 0.1, 1200);
-    camera.position.set(0, 0, 0.1);
+    camera.position.set(0, 0, 0);
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -111,13 +116,23 @@ export default function PanoramaViewer({
     animatedGroupRef.current = animatedGroup;
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
+    const pointerToSpherical = (clientX, clientY) => {
+      const rect = mount.getBoundingClientRect();
+      pointer.x = ((clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1;
+      pointer.y = -((clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const direction = raycaster.ray.direction;
+      return {
+        yaw: THREE.MathUtils.radToDeg(Math.atan2(direction.z, direction.x)),
+        pitch: THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(direction.y, -1, 1))),
+      };
+    };
+    pointerToSphericalRef.current = pointerToSpherical;
 
     const onPointerDown = (event) => {
       if (dragRef.current.hotspotActive) return;
       if (editModeRef.current && animatedMeshesRef.current.length) {
-        const rect = mount.getBoundingClientRect();
-        pointer.x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1;
-        pointer.y = -((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1;
+        const pointerPosition = pointerToSpherical(event.clientX, event.clientY);
         raycaster.setFromCamera(pointer, camera);
         const hit = raycaster.intersectObjects(animatedMeshesRef.current, false)[0];
         if (hit?.object?.userData?.spot) {
@@ -130,6 +145,8 @@ export default function PanoramaViewer({
           dragRef.current.y = event.clientY;
           dragRef.current.yaw = Number(spot.yaw) || 0;
           dragRef.current.pitch = Number(spot.pitch) || 0;
+          dragRef.current.yawOffset = normalizeYaw(dragRef.current.yaw - pointerPosition.yaw);
+          dragRef.current.pitchOffset = dragRef.current.pitch - pointerPosition.pitch;
           mount.setPointerCapture?.(event.pointerId);
           return;
         }
@@ -143,11 +160,10 @@ export default function PanoramaViewer({
     const onPointerMove = (event) => {
       const drag = dragRef.current;
       if (drag.hotspotActive) {
-        const deltaX = event.clientX - drag.x;
-        const deltaY = event.clientY - drag.y;
+        const pointerPosition = pointerToSpherical(event.clientX, event.clientY);
         const nextPosition = {
-          yaw: THREE.MathUtils.clamp(drag.yaw + deltaX * 0.32, -180, 180),
-          pitch: THREE.MathUtils.clamp(drag.pitch - deltaY * 0.24, -65, 65),
+          yaw: normalizeYaw(pointerPosition.yaw + drag.yawOffset),
+          pitch: THREE.MathUtils.clamp(pointerPosition.pitch + drag.pitchOffset, -65, 65),
         };
         if (drag.markerType === 'video') {
           callbacksRef.current.onMoveVideo?.(drag.markerId, nextPosition);
@@ -179,6 +195,8 @@ export default function PanoramaViewer({
       dragRef.current.hotspotActive = false;
       dragRef.current.markerType = null;
       dragRef.current.markerId = null;
+      dragRef.current.yawOffset = 0;
+      dragRef.current.pitchOffset = 0;
     };
 
     const onWheel = (event) => {
@@ -228,7 +246,7 @@ export default function PanoramaViewer({
       markersRef.current.forEach((marker) => {
         const vector = marker.position.clone().project(camera);
         const visible = vector.z < 1;
-        marker.el.style.transform = `translate3d(${(vector.x * 0.5 + 0.5) * mount.clientWidth}px, ${(-vector.y * 0.5 + 0.5) * mount.clientHeight}px, 0) scale(${marker.scale})`;
+        marker.el.style.transform = `translate3d(${(vector.x * 0.5 + 0.5) * mount.clientWidth}px, ${(-vector.y * 0.5 + 0.5) * mount.clientHeight}px, 0) translate(-50%, -50%) scale(${marker.scale})`;
         marker.el.style.opacity = visible ? '1' : '0';
       });
 
@@ -245,6 +263,7 @@ export default function PanoramaViewer({
       mount.removeEventListener('wheel', onWheel);
       resizeObserver.disconnect();
       window.removeEventListener('resize', onResize);
+      if (pointerToSphericalRef.current === pointerToSpherical) pointerToSphericalRef.current = null;
       renderer.dispose();
       tileMaterialsRef.current.forEach((tileMaterial) => {
         tileMaterial.map?.dispose();
@@ -550,6 +569,12 @@ export default function PanoramaViewer({
         dragRef.current.y = event.clientY;
         dragRef.current.yaw = marker.yaw;
         dragRef.current.pitch = marker.pitch || 0;
+        const pointerPosition = pointerToSphericalRef.current?.(event.clientX, event.clientY) || {
+          yaw: Number(marker.yaw) || 0,
+          pitch: Number(marker.pitch) || 0,
+        };
+        dragRef.current.yawOffset = normalizeYaw(dragRef.current.yaw - pointerPosition.yaw);
+        dragRef.current.pitchOffset = dragRef.current.pitch - pointerPosition.pitch;
         mount.setPointerCapture?.(event.pointerId);
       });
       mount.appendChild(el);
